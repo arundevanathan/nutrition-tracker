@@ -12,7 +12,8 @@ Manual steps:
 2. Go to SQL Editor.
 3. Paste and run the full contents of `supabase/migrations/001_initial_schema.sql`.
 4. Paste and run the full contents of `supabase/migrations/002_oauth_poc.sql`.
-5. Confirm the tables and RLS policies were created.
+5. Paste and run the full contents of `supabase/migrations/003_oauth_service_role_grants.sql`.
+6. Confirm the tables, RLS policies, and service-role grants were created.
 
 The scripts are intended for a new project. If they are run against an existing project, review existing tables, functions, triggers, and policies first.
 
@@ -52,6 +53,8 @@ Daily summaries are system-maintained by the API/Worker using service-role acces
 Invite codes are not directly exposed to authenticated users yet. RLS is enabled on `public.invite_codes`, but no authenticated user read or update policies are created for that table.
 
 OAuth proof-of-concept tables are internal to the Worker. RLS is enabled on `public.oauth_login_states`, `public.oauth_codes`, and `public.oauth_tokens`, but no authenticated user policies are created for those tables.
+
+When Supabase Data API table exposure is restricted, run `supabase/migrations/003_oauth_service_role_grants.sql` so only the `service_role` used by the Worker can access OAuth internals. This migration does not grant `anon` or `authenticated` access to OAuth tables.
 
 Food entries require a non-negative `calories` value. Macro fields are required, non-negative, and default to `0`.
 

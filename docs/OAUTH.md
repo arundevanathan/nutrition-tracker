@@ -89,6 +89,7 @@ Run these migrations before testing:
 
 1. `supabase/migrations/001_initial_schema.sql`
 2. `supabase/migrations/002_oauth_poc.sql`
+3. `supabase/migrations/003_oauth_service_role_grants.sql`
 
 OAuth storage tables:
 
@@ -97,6 +98,8 @@ OAuth storage tables:
 - `public.oauth_tokens`
 
 These tables have RLS enabled and no authenticated user policies. The Worker accesses them with the Supabase service role key server-side.
+
+If Supabase Data API table exposure is restricted, `003_oauth_service_role_grants.sql` grants only `service_role` the minimum table privileges needed by the Worker. It does not grant `anon` or `authenticated` access.
 
 ## Supabase Auth Configuration
 
