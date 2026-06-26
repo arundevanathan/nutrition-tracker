@@ -1,31 +1,41 @@
 # Worker
 
-Placeholder for the Cloudflare Worker backend.
+Cloudflare Worker API for the nutrition tracker.
+
+## Current Scope
+
+This folder currently implements only the minimum Custom GPT OAuth proof of concept:
+
+- `GET /health`
+- `GET /oauth/authorize`
+- `POST /oauth/token`
+- `GET /me`
+
+It does not implement dashboard routes, nutrition logging, food APIs, or weight APIs yet.
 
 ## Intended Responsibilities
 
 - Serve as the only API layer between GPT Actions, the dashboard, and Supabase.
 - Authenticate requests.
 - Validate payloads.
-- Read and write Supabase data.
+- Read and write Supabase data through server-side credentials where appropriate.
 - Return GPT-friendly and dashboard-friendly response shapes.
 - Log API activity and latency.
 
-## Planned Endpoints
+## Local Development
 
-- `GET /me`
-- `GET /dashboard`
-- `POST /food-entry`
-- `PATCH /food-entry/{id}`
-- `DELETE /food-entry/{id}`
-- `POST /weight-entry`
+Install dependencies from this folder, then run:
+
+```bash
+npm run dev
+```
+
+Required configuration is documented in `../docs/OAUTH.md` and `../.env.example`.
 
 ## Not Yet Implemented
 
-- Worker runtime setup
-- `wrangler` configuration
-- Route handlers
-- Supabase client
-- Auth verification
-- Validation schemas
+- Nutrition logging routes
+- Dashboard aggregation routes
+- Food and weight APIs
+- Production OAuth hardening
 - Tests

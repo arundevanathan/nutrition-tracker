@@ -44,7 +44,7 @@ The MVP keeps the product intentionally small:
 
 ## Current Status
 
-Initial repository scaffold only. Full implementation, package setup, deployment config, database migrations, OpenAPI schemas, and UI code are intentionally deferred.
+Foundation docs, Supabase schema, and the minimum Custom GPT OAuth proof of concept are in progress. Dashboard UI, nutrition logging, food APIs, and weight APIs are intentionally deferred.
 
 ## Docs
 
@@ -53,3 +53,4 @@ Initial repository scaffold only. Full implementation, package setup, deployment
 - [Database](docs/DATABASE.md)
 - [API](docs/API.md)
 - [Custom GPT](docs/GPT.md)
+- [OAuth Proof Of Concept](docs/OAUTH.md)

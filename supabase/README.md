@@ -4,17 +4,17 @@ This folder contains the database foundation for the public-alpha MVP.
 
 ## Migration
 
-Run `supabase/migrations/001_initial_schema.sql` in the Supabase SQL Editor for the target project.
+Run migrations in the Supabase SQL Editor for the target project.
 
 Manual steps:
 
 1. Open the Supabase project.
 2. Go to SQL Editor.
-3. Paste the full contents of `supabase/migrations/001_initial_schema.sql`.
-4. Run the script.
+3. Paste and run the full contents of `supabase/migrations/001_initial_schema.sql`.
+4. Paste and run the full contents of `supabase/migrations/002_oauth_poc.sql`.
 5. Confirm the tables and RLS policies were created.
 
-The script is intended for a new project. If it is run against an existing project, review existing tables, functions, triggers, and policies first.
+The scripts are intended for a new project. If they are run against an existing project, review existing tables, functions, triggers, and policies first.
 
 ## Tables Created
 
@@ -24,6 +24,9 @@ The script is intended for a new project. If it is run against an existing proje
 - `public.daily_summaries`
 - `public.api_logs`
 - `public.invite_codes`
+- `public.oauth_login_states`
+- `public.oauth_codes`
+- `public.oauth_tokens`
 
 ## Auth User Trigger
 
@@ -47,6 +50,8 @@ Authenticated users can only access records tied to their own `auth.uid()`. The 
 Daily summaries are system-maintained by the API/Worker using service-role access. Authenticated users can read their own daily summaries, but they cannot insert, update, or delete them directly.
 
 Invite codes are not directly exposed to authenticated users yet. RLS is enabled on `public.invite_codes`, but no authenticated user read or update policies are created for that table.
+
+OAuth proof-of-concept tables are internal to the Worker. RLS is enabled on `public.oauth_login_states`, `public.oauth_codes`, and `public.oauth_tokens`, but no authenticated user policies are created for those tables.
 
 Food entries require a non-negative `calories` value. Macro fields are required, non-negative, and default to `0`.
 

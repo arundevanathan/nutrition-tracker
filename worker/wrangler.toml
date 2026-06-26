@@ -1,0 +1,7 @@
+name = "nutrition-tracker-api"
+main = "src/index.ts"
+compatibility_date = "2026-06-26"
+
+[vars]
+OAUTH_CODE_TTL_SECONDS = "300"
+OAUTH_TOKEN_TTL_SECONDS = "2592000"

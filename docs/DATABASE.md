@@ -108,6 +108,46 @@ Invite codes are not directly exposed to authenticated users in the MVP. Access 
 - `created_at` timestamptz
 - `updated_at` timestamptz
 
+### OAuth Login States
+
+Stores short-lived PKCE login state for the Custom GPT OAuth proof of concept.
+
+- `id` text primary key
+- `client_id` text
+- `redirect_uri` text
+- `state` text
+- `scope` text
+- `code_verifier` text
+- `expires_at` timestamptz
+- `used_at` timestamptz
+- `created_at` timestamptz
+
+### OAuth Codes
+
+Stores short-lived authorization codes for the Custom GPT OAuth proof of concept. Raw codes are never stored.
+
+- `id` uuid primary key
+- `code_hash` text
+- `user_id` uuid, references `public.users(id)`
+- `client_id` text
+- `redirect_uri` text
+- `scope` text
+- `expires_at` timestamptz
+- `used_at` timestamptz
+- `created_at` timestamptz
+
+### OAuth Tokens
+
+Stores access tokens for the Custom GPT OAuth proof of concept. Raw tokens are never stored.
+
+- `id` uuid primary key
+- `token_hash` text
+- `user_id` uuid, references `public.users(id)`
+- `scope` text
+- `expires_at` timestamptz
+- `revoked_at` timestamptz
+- `created_at` timestamptz
+
 ## Row Level Security
 
 RLS is enabled on all MVP tables.
@@ -121,12 +161,15 @@ Authenticated users can only access rows tied to their own `auth.uid()`:
 - Users can read and create their own API logs.
 - Daily summaries are system-maintained by the API/Worker using service-role access.
 - Invite codes have RLS enabled but no authenticated user policies yet.
+- OAuth internal tables have RLS enabled but no authenticated user policies.
 
 The Worker can later use trusted server-side credentials for administrative operations that should bypass user RLS.
 
 ## Migration
 
 Initial schema lives in `supabase/migrations/001_initial_schema.sql`.
+
+OAuth proof-of-concept storage lives in `supabase/migrations/002_oauth_poc.sql`.
 
 ## Not Yet Implemented
 
