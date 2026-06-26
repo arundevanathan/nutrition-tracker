@@ -8,13 +8,14 @@ The MVP should use Supabase Auth with Google login and Postgres tables protected
 
 ## MVP Entities
 
-### Profiles
+### User Settings
 
-One profile belongs to one authenticated Supabase user.
+One authenticated Supabase user is the tracked nutrition profile for MVP. There is no separate `profiles` table.
+
+User-specific nutrition settings can be stored directly against the authenticated user's Supabase user id.
 
 Likely fields:
 
-- `id`
 - `user_id`
 - `display_name`
 - `timezone`
@@ -30,7 +31,7 @@ Stores each logged meal, snack, or drink.
 Likely fields:
 
 - `id`
-- `profile_id`
+- `user_id`
 - `logged_at`
 - `meal_type`
 - `description`
@@ -51,7 +52,7 @@ Stores user weight logs.
 Likely fields:
 
 - `id`
-- `profile_id`
+- `user_id`
 - `logged_at`
 - `weight`
 - `unit`
@@ -66,7 +67,7 @@ Stores or materializes daily nutrition totals for faster dashboard and GPT summa
 Likely fields:
 
 - `id`
-- `profile_id`
+- `user_id`
 - `date`
 - `calories`
 - `protein_g`
@@ -83,7 +84,7 @@ Tracks API requests for debugging, latency, and product metrics.
 Likely fields:
 
 - `id`
-- `profile_id`
+- `user_id`
 - `route`
 - `method`
 - `status`
@@ -106,20 +107,23 @@ Likely fields:
 
 ## Row Level Security
 
-RLS should ensure each authenticated user can access only records tied to their own profile.
+RLS should ensure each authenticated user can access only records tied to their own Supabase user id.
 
 Initial policy direction:
 
-- Users can read and update their own profile.
+- Users can read and update their own settings.
 - Users can read, create, update, and delete their own food entries.
 - Users can read, create, update, and delete their own weight entries.
 - Dashboard aggregates should only include the authenticated user's records.
+- API logs should only expose records for the authenticated user.
 - Service-role access should be limited to trusted server-side operations.
+
+## Migration
+
+Initial schema lives in `supabase/migrations/001_initial_schema.sql`.
 
 ## Not Yet Implemented
 
 - Supabase project configuration
-- SQL migrations
 - Seed data
-- RLS policies
 - Generated types

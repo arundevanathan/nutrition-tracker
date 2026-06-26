@@ -14,7 +14,7 @@ Implementation details are still open, but the Worker should verify authenticate
 
 ### `GET /me`
 
-Returns the authenticated user's profile and basic setup state.
+Returns the authenticated user's settings and basic setup state.
 
 ### `GET /dashboard`
 
@@ -57,7 +57,7 @@ Creates a weight entry.
 - Validate all request payloads at the Worker boundary.
 - Treat GPT-generated nutrition estimates as user data with confidence metadata.
 - Keep timestamps timezone-aware.
-- Never trust client-supplied profile ownership.
+- Never trust client-supplied user ownership.
 
 ## Not Yet Implemented
 
