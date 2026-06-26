@@ -1,0 +1,46 @@
+-- Optional sample data for local development only.
+-- Do not include real user data in this file.
+--
+-- Replace the UUID below with a test auth user id that exists in your Supabase project.
+--
+-- insert into public.food_entries (
+--   user_id,
+--   consumption_date,
+--   consumption_time,
+--   meal_type,
+--   entry_type,
+--   description,
+--   calories,
+--   protein_g,
+--   carbs_g,
+--   fat_g,
+--   confidence,
+--   source
+-- )
+-- values (
+--   '00000000-0000-0000-0000-000000000000',
+--   current_date,
+--   '08:30',
+--   'breakfast',
+--   'Core',
+--   'Example oats with yogurt',
+--   420,
+--   28,
+--   52,
+--   12,
+--   'medium',
+--   'gpt'
+-- );
+--
+-- insert into public.weight_entries (
+--   user_id,
+--   date,
+--   weight_kg,
+--   note
+-- )
+-- values (
+--   '00000000-0000-0000-0000-000000000000',
+--   current_date,
+--   75.5,
+--   'Example local-development weight entry'
+-- );

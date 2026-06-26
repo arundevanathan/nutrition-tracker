@@ -4,119 +4,118 @@
 
 Supabase is the public-alpha database and auth provider.
 
-The MVP should use Supabase Auth with Google login and Postgres tables protected by Row Level Security.
+The MVP uses Supabase Auth with Google login and Postgres tables protected by Row Level Security.
 
-## MVP Entities
+## MVP Assumption
 
-### User Settings
+One authenticated Supabase user is one tracked nutrition profile.
 
-One authenticated Supabase user is the tracked nutrition profile for MVP. There is no separate `profiles` table.
+There is no separate multi-profile or family model in the MVP. Every user-owned table uses `user_id` and ultimately ties back to `auth.users.id` through `public.users.id`.
 
-User-specific nutrition settings can be stored directly against the authenticated user's Supabase user id.
+## MVP Schema
 
-Likely fields:
+### Users
 
-- `user_id`
-- `display_name`
-- `timezone`
-- `calorie_target`
-- `protein_target`
-- `created_at`
-- `updated_at`
+Stores public application settings for the authenticated Supabase user.
+
+- `id` uuid primary key, references `auth.users(id)`
+- `email` text
+- `display_name` text
+- `timezone` text, default `UTC`
+- `calorie_target` integer, default target for daily calories
+- `protein_target_g` numeric, default target for daily protein grams
+- `created_at` timestamptz
+- `updated_at` timestamptz
 
 ### Food Entries
 
-Stores each logged meal, snack, or drink.
+Stores each logged meal, snack, drink, alcohol entry, or eating-out entry.
 
-Likely fields:
-
-- `id`
-- `user_id`
-- `logged_at`
-- `meal_type`
-- `description`
-- `calories`
-- `protein_g`
-- `carbs_g`
-- `fat_g`
-- `source`
-- `confidence`
-- `raw_gpt_notes`
-- `created_at`
-- `updated_at`
+- `id` uuid primary key
+- `user_id` uuid, references `public.users(id)`
+- `logged_at` timestamptz, when the entry was recorded
+- `consumption_date` date, the local date the food was consumed
+- `consumption_time` time, optional local time the food was consumed
+- `meal_type` text, optional meal bucket
+- `entry_type` text, one of `Core`, `Junk`, `Alcohol`, `Eating Out`
+- `description` text
+- `calories` integer
+- `protein_g` numeric
+- `carbs_g` numeric
+- `fat_g` numeric
+- `confidence` text, one of `high`, `medium`, `low`
+- `source` text
+- `notes` text
+- `created_at` timestamptz
+- `updated_at` timestamptz
 
 ### Weight Entries
 
-Stores user weight logs.
+Stores one weight entry per user per date.
 
-Likely fields:
-
-- `id`
-- `user_id`
-- `logged_at`
-- `weight`
-- `unit`
-- `note`
-- `created_at`
-- `updated_at`
+- `id` uuid primary key
+- `user_id` uuid, references `public.users(id)`
+- `date` date
+- `weight_kg` numeric
+- `note` text
+- `created_at` timestamptz
+- `updated_at` timestamptz
 
 ### Daily Summaries
 
-Stores or materializes daily nutrition totals for faster dashboard and GPT summary responses.
+Stores one dashboard summary row per user per date.
 
-Likely fields:
-
-- `id`
-- `user_id`
-- `date`
-- `calories`
-- `protein_g`
-- `carbs_g`
-- `fat_g`
-- `entries_count`
-- `created_at`
-- `updated_at`
+- `id` uuid primary key
+- `user_id` uuid, references `public.users(id)`
+- `date` date
+- `calories` integer
+- `protein_g` numeric
+- `carbs_g` numeric
+- `fat_g` numeric
+- `entries_count` integer
+- `created_at` timestamptz
+- `updated_at` timestamptz
 
 ### API Logs
 
 Tracks API requests for debugging, latency, and product metrics.
 
-Likely fields:
+- `id` uuid primary key
+- `user_id` uuid, references `public.users(id)`
+- `route` text
+- `method` text
+- `status` integer
+- `latency_ms` integer
+- `request_source` text
+- `created_at` timestamptz
 
-- `id`
-- `user_id`
-- `route`
-- `method`
-- `status`
-- `latency_ms`
-- `request_source`
-- `created_at`
-
-### Invite Codes Or Waitlist
+### Invite Codes
 
 Supports controlled public-alpha access if needed.
 
-Likely fields:
-
-- `id`
-- `email`
-- `code`
-- `status`
-- `used_at`
-- `created_at`
+- `id` uuid primary key
+- `user_id` uuid, optional reference to `public.users(id)` when claimed
+- `email` text
+- `code` text
+- `status` text
+- `used_at` timestamptz
+- `created_at` timestamptz
+- `updated_at` timestamptz
 
 ## Row Level Security
 
-RLS should ensure each authenticated user can access only records tied to their own Supabase user id.
+RLS is enabled on all MVP tables.
 
-Initial policy direction:
+Authenticated users can only access rows tied to their own `auth.uid()`:
 
-- Users can read and update their own settings.
+- Users can read and update their own `public.users` row.
 - Users can read, create, update, and delete their own food entries.
 - Users can read, create, update, and delete their own weight entries.
-- Dashboard aggregates should only include the authenticated user's records.
-- API logs should only expose records for the authenticated user.
-- Service-role access should be limited to trusted server-side operations.
+- Users can read, create, update, and delete their own daily summaries.
+- Users can read and create their own API logs.
+- Users can read invite-code rows assigned to their own user id.
+
+The Worker can later use trusted server-side credentials for administrative operations that should bypass user RLS.
 
 ## Migration
 
@@ -125,5 +124,5 @@ Initial schema lives in `supabase/migrations/001_initial_schema.sql`.
 ## Not Yet Implemented
 
 - Supabase project configuration
-- Seed data
-- Generated types
+- Generated database types
+- Worker data access code
