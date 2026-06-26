@@ -8,6 +8,7 @@ This folder currently implements only the minimum Custom GPT OAuth proof of conc
 
 - `GET /health`
 - `GET /oauth/authorize`
+- `GET /oauth/supabase/callback`
 - `POST /oauth/token`
 - `GET /me`
 

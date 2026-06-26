@@ -39,7 +39,15 @@ Accepts standard OAuth query parameters:
 
 For MVP, `response_type` must be `code`. The Worker validates `client_id` and `redirect_uri` against configured allowlists.
 
-If the user is not authenticated with Supabase, the Worker redirects to Supabase Google login using a PKCE flow. After Supabase redirects back, the Worker creates a short-lived authorization code tied to the Supabase user id and redirects back to ChatGPT with:
+If the user is not authenticated with Supabase, the Worker stores the original ChatGPT OAuth parameters server-side, then redirects to Supabase Google login using a PKCE flow.
+
+The Worker passes the Supabase auth redirect URL as:
+
+```text
+https://nutrition-tracker.arun-devanathan.workers.dev/oauth/supabase/callback
+```
+
+After Supabase redirects to that Worker callback, the Worker validates the Supabase code, identifies the Supabase user, creates a short-lived authorization code tied to that user id, and redirects back to the original ChatGPT `redirect_uri` with:
 
 - `code`
 - `state`
@@ -90,6 +98,7 @@ Run these migrations before testing:
 1. `supabase/migrations/001_initial_schema.sql`
 2. `supabase/migrations/002_oauth_poc.sql`
 3. `supabase/migrations/003_oauth_service_role_grants.sql`
+4. `supabase/migrations/004_oauth_login_state_response_type.sql`
 
 OAuth storage tables:
 
@@ -108,10 +117,10 @@ In Supabase, enable the Google auth provider and configure the Google OAuth clie
 Add the Worker callback URL to Supabase Auth redirect URLs:
 
 ```text
-https://your-worker.example.workers.dev/oauth/authorize
+https://nutrition-tracker.arun-devanathan.workers.dev/oauth/supabase/callback
 ```
 
-The Worker uses that endpoint as the Supabase PKCE callback, then redirects back to ChatGPT with the Custom GPT authorization code.
+The Worker uses that endpoint as the Supabase PKCE callback, then redirects back to ChatGPT with the Custom GPT authorization code. Supabase should not redirect to `localhost` for this flow.
 
 ## Custom GPT Action Configuration
 
@@ -119,8 +128,8 @@ Use `openapi/oauth-test.yaml` as the action schema.
 
 In the Custom GPT Action authentication settings, configure OAuth:
 
-- Authorization URL: `https://your-worker.example.workers.dev/oauth/authorize`
-- Token URL: `https://your-worker.example.workers.dev/oauth/token`
+- Authorization URL: `https://nutrition-tracker.arun-devanathan.workers.dev/oauth/authorize`
+- Token URL: `https://nutrition-tracker.arun-devanathan.workers.dev/oauth/token`
 - Scope: optional for this POC
 - Client ID: value from `OAUTH_ALLOWED_CLIENT_IDS`
 - Client Secret: not used by this POC
@@ -133,10 +142,11 @@ Set the OpenAPI server URL to the deployed Worker origin.
 2. GPT tries to call `GET /me`.
 3. ChatGPT prompts the user to connect their account.
 4. User completes Google login through Supabase.
-5. The Worker creates an OAuth authorization code and redirects back to ChatGPT.
-6. ChatGPT exchanges the code for an access token.
-7. GPT retries `GET /me`.
-8. GPT displays the authenticated user's details.
+5. Supabase redirects to `/oauth/supabase/callback` on the Worker.
+6. The Worker creates an OAuth authorization code and redirects back to ChatGPT.
+7. ChatGPT exchanges the code for an access token.
+8. GPT retries `GET /me`.
+9. GPT displays the authenticated user's details.
 
 ## Environment Variables
 

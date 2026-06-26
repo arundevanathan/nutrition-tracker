@@ -12,6 +12,7 @@ type OAuthLoginState = {
   client_id: string;
   redirect_uri: string;
   state: string | null;
+  response_type: string;
   scope: string | null;
   code_verifier: string;
   expires_at: string;
@@ -43,6 +44,10 @@ export default {
         return authorize(request, env);
       }
 
+      if (request.method === "GET" && url.pathname === "/oauth/supabase/callback") {
+        return supabaseCallback(request, env);
+      }
+
       if (request.method === "POST" && url.pathname === "/oauth/token") {
         return token(request, env);
       }
@@ -61,32 +66,37 @@ export default {
 
 async function authorize(request: Request, env: Env): Promise<Response> {
   const url = new URL(request.url);
-  const supabaseCode = url.searchParams.get("code");
-  const loginStateId = url.searchParams.get("login_state");
-
-  if (supabaseCode && loginStateId) {
-    return completeSupabaseLogin(env, supabaseCode, loginStateId);
-  }
-
   const responseType = url.searchParams.get("response_type");
   const clientId = url.searchParams.get("client_id");
   const redirectUri = url.searchParams.get("redirect_uri");
   const state = url.searchParams.get("state");
   const scope = url.searchParams.get("scope");
 
+  console.log("oauth_authorize_start", {
+    response_type: responseType,
+    client_id: clientId,
+    redirect_uri: redirectUri,
+    has_state: Boolean(state),
+    scope,
+  });
+
   if (!responseType || !clientId || !redirectUri) {
+    console.log("oauth_authorize_invalid_request");
     return json({ error: "invalid_request", error_description: "response_type, client_id, and redirect_uri are required" }, 400);
   }
 
   if (responseType !== "code") {
+    console.log("oauth_authorize_unsupported_response_type", { response_type: responseType });
     return redirectWithOAuthError(redirectUri, state, "unsupported_response_type");
   }
 
   if (!isAllowed(clientId, env.OAUTH_ALLOWED_CLIENT_IDS)) {
+    console.log("oauth_authorize_unauthorized_client", { client_id: clientId });
     return json({ error: "unauthorized_client" }, 400);
   }
 
   if (!isAllowed(redirectUri, env.OAUTH_ALLOWED_REDIRECT_URIS)) {
+    console.log("oauth_authorize_invalid_redirect_uri", { redirect_uri: redirectUri });
     return json({ error: "invalid_redirect_uri" }, 400);
   }
 
@@ -100,40 +110,77 @@ async function authorize(request: Request, env: Env): Promise<Response> {
     client_id: clientId,
     redirect_uri: redirectUri,
     state,
+    response_type: responseType,
     scope,
     code_verifier: codeVerifier,
     expires_at: expiresAt,
   });
 
-  const callbackUrl = new URL("/oauth/authorize", publicBaseUrl(env));
+  const callbackUrl = new URL("/oauth/supabase/callback", publicBaseUrl(env));
   callbackUrl.searchParams.set("login_state", stateId);
 
   const authUrl = new URL("/auth/v1/authorize", env.SUPABASE_URL);
   authUrl.searchParams.set("provider", "google");
   authUrl.searchParams.set("redirect_to", callbackUrl.toString());
+  // Supabase JS calls this option redirectTo. The REST authorize endpoint uses redirect_to.
   authUrl.searchParams.set("code_challenge", codeChallenge);
   authUrl.searchParams.set("code_challenge_method", "s256");
+
+  console.log("oauth_authorize_redirect_to_supabase", {
+    login_state: stateId,
+    supabase_callback: callbackUrl.toString(),
+  });
 
   return Response.redirect(authUrl.toString(), 302);
 }
 
-async function completeSupabaseLogin(env: Env, supabaseCode: string, loginStateId: string): Promise<Response> {
+async function supabaseCallback(request: Request, env: Env): Promise<Response> {
+  const url = new URL(request.url);
+  const supabaseCode = url.searchParams.get("code");
+  const loginStateId = url.searchParams.get("login_state");
+  const error = url.searchParams.get("error");
+
+  console.log("oauth_supabase_callback_start", {
+    has_code: Boolean(supabaseCode),
+    has_login_state: Boolean(loginStateId),
+    error,
+  });
+
+  if (error) {
+    console.log("oauth_supabase_callback_error", { error });
+    return json({ error: "supabase_auth_error", error_description: error }, 400);
+  }
+
+  if (!supabaseCode || !loginStateId) {
+    console.log("oauth_supabase_callback_invalid_request");
+    return json({ error: "invalid_request", error_description: "code and login_state are required" }, 400);
+  }
+
   const states = await supabaseSelect<OAuthLoginState>(
     env,
-    `oauth_login_states?id=eq.${encodeURIComponent(loginStateId)}&select=client_id,redirect_uri,state,scope,code_verifier,expires_at,used_at`
+    `oauth_login_states?id=eq.${encodeURIComponent(loginStateId)}&select=client_id,redirect_uri,state,response_type,scope,code_verifier,expires_at,used_at`
   );
   const loginState = states[0];
 
   if (!loginState || loginState.used_at || new Date(loginState.expires_at).getTime() < Date.now()) {
+    console.log("oauth_supabase_callback_invalid_or_expired_state", { login_state: loginStateId });
     return json({ error: "invalid_or_expired_login_state" }, 400);
+  }
+
+  if (loginState.response_type !== "code") {
+    console.log("oauth_supabase_callback_invalid_response_type", { response_type: loginState.response_type });
+    return redirectWithOAuthError(loginState.redirect_uri, loginState.state, "unsupported_response_type");
   }
 
   const session = await exchangeSupabaseCode(env, supabaseCode, loginState.code_verifier);
   const userId = session.user?.id;
 
   if (!userId) {
+    console.log("oauth_supabase_callback_no_user");
     return redirectWithOAuthError(loginState.redirect_uri, loginState.state, "access_denied");
   }
+
+  console.log("oauth_supabase_callback_user_identified", { user_id: userId });
 
   const appCode = randomToken(48);
   const codeHash = await sha256Hex(appCode);
@@ -157,6 +204,12 @@ async function completeSupabaseLogin(env: Env, supabaseCode: string, loginStateI
   if (loginState.state) {
     redirectUrl.searchParams.set("state", loginState.state);
   }
+
+  console.log("oauth_supabase_callback_redirect_to_chatgpt", {
+    user_id: userId,
+    redirect_uri: loginState.redirect_uri,
+    has_state: Boolean(loginState.state),
+  });
 
   return Response.redirect(redirectUrl.toString(), 302);
 }

@@ -13,7 +13,8 @@ Manual steps:
 3. Paste and run the full contents of `supabase/migrations/001_initial_schema.sql`.
 4. Paste and run the full contents of `supabase/migrations/002_oauth_poc.sql`.
 5. Paste and run the full contents of `supabase/migrations/003_oauth_service_role_grants.sql`.
-6. Confirm the tables, RLS policies, and service-role grants were created.
+6. Paste and run the full contents of `supabase/migrations/004_oauth_login_state_response_type.sql`.
+7. Confirm the tables, RLS policies, and service-role grants were created.
 
 The scripts are intended for a new project. If they are run against an existing project, review existing tables, functions, triggers, and policies first.
 
