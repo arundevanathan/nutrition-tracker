@@ -21,7 +21,7 @@ Stores public application settings for the authenticated Supabase user.
 - `id` uuid primary key, references `auth.users(id)`
 - `email` text
 - `display_name` text
-- `timezone` text, default `UTC`
+- `timezone` text, default `Asia/Kolkata`
 - `calorie_target` integer, default target for daily calories
 - `protein_target_g` numeric, default target for daily protein grams
 - `created_at` timestamptz
@@ -39,10 +39,10 @@ Stores each logged meal, snack, drink, alcohol entry, or eating-out entry.
 - `meal_type` text, optional meal bucket
 - `entry_type` text, one of `Core`, `Junk`, `Alcohol`, `Eating Out`
 - `description` text
-- `calories` integer
-- `protein_g` numeric
-- `carbs_g` numeric
-- `fat_g` numeric
+- `calories` integer, required and non-negative
+- `protein_g` numeric, required, defaults to `0`, non-negative
+- `carbs_g` numeric, required, defaults to `0`, non-negative
+- `fat_g` numeric, required, defaults to `0`, non-negative
 - `confidence` text, one of `high`, `medium`, `low`
 - `source` text
 - `notes` text
@@ -63,7 +63,7 @@ Stores one weight entry per user per date.
 
 ### Daily Summaries
 
-Stores one dashboard summary row per user per date.
+Stores one system-maintained dashboard summary row per user per date.
 
 - `id` uuid primary key
 - `user_id` uuid, references `public.users(id)`
@@ -72,6 +72,10 @@ Stores one dashboard summary row per user per date.
 - `protein_g` numeric
 - `carbs_g` numeric
 - `fat_g` numeric
+- `junk_calories` integer
+- `alcohol_calories` integer
+- `eating_out_calories` integer
+- `weight_kg` numeric, optional latest weight for the date
 - `entries_count` integer
 - `created_at` timestamptz
 - `updated_at` timestamptz
@@ -93,6 +97,8 @@ Tracks API requests for debugging, latency, and product metrics.
 
 Supports controlled public-alpha access if needed.
 
+Invite codes are not directly exposed to authenticated users in the MVP. Access will be handled later through the API/Worker using trusted service-role operations.
+
 - `id` uuid primary key
 - `user_id` uuid, optional reference to `public.users(id)` when claimed
 - `email` text
@@ -111,9 +117,10 @@ Authenticated users can only access rows tied to their own `auth.uid()`:
 - Users can read and update their own `public.users` row.
 - Users can read, create, update, and delete their own food entries.
 - Users can read, create, update, and delete their own weight entries.
-- Users can read, create, update, and delete their own daily summaries.
+- Users can read their own daily summaries.
 - Users can read and create their own API logs.
-- Users can read invite-code rows assigned to their own user id.
+- Daily summaries are system-maintained by the API/Worker using service-role access.
+- Invite codes have RLS enabled but no authenticated user policies yet.
 
 The Worker can later use trusted server-side credentials for administrative operations that should bypass user RLS.
 

@@ -34,7 +34,7 @@ When a new Supabase auth user is created, the trigger inserts a matching row in 
 - Supabase auth user id
 - Email
 - Display name when available from auth metadata
-- Default timezone of `UTC`
+- Default timezone of `Asia/Kolkata`
 - Default calorie target of `2000`
 - Default protein target of `120`
 
@@ -43,6 +43,12 @@ When a new Supabase auth user is created, the trigger inserts a matching row in 
 RLS is enabled on all MVP tables.
 
 Authenticated users can only access records tied to their own `auth.uid()`. The public application tables are scoped through `user_id`, while `public.users.id` directly references `auth.users(id)`.
+
+Daily summaries are system-maintained by the API/Worker using service-role access. Authenticated users can read their own daily summaries, but they cannot insert, update, or delete them directly.
+
+Invite codes are not directly exposed to authenticated users yet. RLS is enabled on `public.invite_codes`, but no authenticated user read or update policies are created for that table.
+
+Food entries require a non-negative `calories` value. Macro fields are required, non-negative, and default to `0`.
 
 Future Worker server-side operations may use trusted Supabase service credentials where administrative access is required. Those credentials must never be exposed to the dashboard or Custom GPT.
 

@@ -17,7 +17,7 @@ create table public.users (
   id uuid primary key references auth.users(id) on delete cascade,
   email text not null,
   display_name text,
-  timezone text not null default 'UTC',
+  timezone text not null default 'Asia/Kolkata',
   calorie_target integer not null default 2000 check (calorie_target > 0),
   protein_target_g numeric(8, 2) not null default 120 check (protein_target_g >= 0),
   created_at timestamptz not null default now(),
@@ -36,10 +36,10 @@ create table public.food_entries (
   ),
   entry_type text not null default 'Core' check (entry_type in ('Core', 'Junk', 'Alcohol', 'Eating Out')),
   description text not null check (length(trim(description)) > 0),
-  calories integer check (calories is null or calories >= 0),
-  protein_g numeric(8, 2) check (protein_g is null or protein_g >= 0),
-  carbs_g numeric(8, 2) check (carbs_g is null or carbs_g >= 0),
-  fat_g numeric(8, 2) check (fat_g is null or fat_g >= 0),
+  calories integer not null check (calories >= 0),
+  protein_g numeric(8, 2) not null default 0 check (protein_g >= 0),
+  carbs_g numeric(8, 2) not null default 0 check (carbs_g >= 0),
+  fat_g numeric(8, 2) not null default 0 check (fat_g >= 0),
   confidence text check (confidence is null or confidence in ('high', 'medium', 'low')),
   source text not null default 'gpt' check (source in ('gpt', 'dashboard', 'import', 'system')),
   notes text,
@@ -66,6 +66,10 @@ create table public.daily_summaries (
   protein_g numeric(8, 2) not null default 0 check (protein_g >= 0),
   carbs_g numeric(8, 2) not null default 0 check (carbs_g >= 0),
   fat_g numeric(8, 2) not null default 0 check (fat_g >= 0),
+  junk_calories integer not null default 0 check (junk_calories >= 0),
+  alcohol_calories integer not null default 0 check (alcohol_calories >= 0),
+  eating_out_calories integer not null default 0 check (eating_out_calories >= 0),
+  weight_kg numeric(6, 2) check (weight_kg is null or weight_kg > 0),
   entries_count integer not null default 0 check (entries_count >= 0),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
@@ -155,7 +159,7 @@ begin
     new.id,
     coalesce(new.email, ''),
     coalesce(new.raw_user_meta_data ->> 'full_name', new.raw_user_meta_data ->> 'name'),
-    'UTC',
+    'Asia/Kolkata',
     2000,
     120
   )
@@ -249,25 +253,6 @@ for select
 to authenticated
 using (auth.uid() = user_id);
 
-create policy "Users can insert their own daily summaries"
-on public.daily_summaries
-for insert
-to authenticated
-with check (auth.uid() = user_id);
-
-create policy "Users can update their own daily summaries"
-on public.daily_summaries
-for update
-to authenticated
-using (auth.uid() = user_id)
-with check (auth.uid() = user_id);
-
-create policy "Users can delete their own daily summaries"
-on public.daily_summaries
-for delete
-to authenticated
-using (auth.uid() = user_id);
-
 create policy "Users can read their own API logs"
 on public.api_logs
 for select
@@ -278,17 +263,4 @@ create policy "Users can insert their own API logs"
 on public.api_logs
 for insert
 to authenticated
-with check (auth.uid() = user_id);
-
-create policy "Users can read their own invite codes"
-on public.invite_codes
-for select
-to authenticated
-using (auth.uid() = user_id);
-
-create policy "Users can update their own invite codes"
-on public.invite_codes
-for update
-to authenticated
-using (auth.uid() = user_id)
 with check (auth.uid() = user_id);
