@@ -4,7 +4,7 @@ info:
   version: 0.1.0
   description: Minimal Custom GPT Action for validating OAuth account linking.
 servers:
-  - url: https://your-worker.example.workers.dev
+  - url: https://nutrition-tracker.arun-devanathan.workers.dev
 paths:
   /me:
     get:
@@ -50,6 +50,6 @@ components:
       type: oauth2
       flows:
         authorizationCode:
-          authorizationUrl: https://your-worker.example.workers.dev/oauth/authorize
-          tokenUrl: https://your-worker.example.workers.dev/oauth/token
+          authorizationUrl: https://nutrition-tracker.arun-devanathan.workers.dev/oauth/authorize
+          tokenUrl: https://nutrition-tracker.arun-devanathan.workers.dev/oauth/token
           scopes: {}
