@@ -779,6 +779,8 @@ components:
         - days_logged
         - highest_calorie_day
         - lowest_calorie_day
+        - logged_days_last_7_days
+        - logged_days_previous_7_days
         - avg_calories_last_7_days
         - avg_calories_previous_7_days
         - calorie_trend_delta
@@ -799,6 +801,10 @@ components:
           anyOf:
             - $ref: "#/components/schemas/DailyTotals"
             - type: "null"
+        logged_days_last_7_days:
+          type: integer
+        logged_days_previous_7_days:
+          type: integer
         avg_calories_last_7_days:
           type: integer
         avg_calories_previous_7_days:

@@ -1023,32 +1023,41 @@ function summarizeFoodEntries(date: string, entries: FoodEntryRow[]) {
 }
 
 function averageDailyTotals(days: ReturnType<typeof summarizeFoodEntries>[]) {
-  const divisor = days.length || 1;
+  return averageDailyTotalsForLoggedDays(days);
+}
+
+function averageDailyTotalsForLoggedDays(days: ReturnType<typeof summarizeFoodEntries>[]) {
+  const loggedDays = days.filter((day) => day.entries_count > 0);
+  const divisor = loggedDays.length || 1;
   return roundTotals({
-    calories: sum(days, "calories") / divisor,
-    protein_g: sum(days, "protein_g") / divisor,
-    carbs_g: sum(days, "carbs_g") / divisor,
-    fat_g: sum(days, "fat_g") / divisor,
-    junk_calories: sum(days, "junk_calories") / divisor,
-    alcohol_calories: sum(days, "alcohol_calories") / divisor,
-    eating_out_calories: sum(days, "eating_out_calories") / divisor,
-    entries_count: sum(days, "entries_count") / divisor,
+    calories: sum(loggedDays, "calories") / divisor,
+    protein_g: sum(loggedDays, "protein_g") / divisor,
+    carbs_g: sum(loggedDays, "carbs_g") / divisor,
+    fat_g: sum(loggedDays, "fat_g") / divisor,
+    junk_calories: sum(loggedDays, "junk_calories") / divisor,
+    alcohol_calories: sum(loggedDays, "alcohol_calories") / divisor,
+    eating_out_calories: sum(loggedDays, "eating_out_calories") / divisor,
+    entries_count: sum(loggedDays, "entries_count") / divisor,
   });
 }
 
 function dashboardInsights(days: ReturnType<typeof summarizeFoodEntries>[], weights: WeightEntryRow[]) {
   const latest7 = days.slice(-7);
   const previous7 = days.slice(0, -7);
-  const latest7Averages = averageDailyTotals(latest7);
-  const previous7Averages = averageDailyTotals(previous7);
+  const latest7Averages = averageDailyTotalsForLoggedDays(latest7);
+  const previous7Averages = averageDailyTotalsForLoggedDays(previous7);
+  const latest7LoggedDays = latest7.filter((day) => day.entries_count > 0).length;
+  const previous7LoggedDays = previous7.filter((day) => day.entries_count > 0).length;
   const daysWithEntries = days.filter((day) => day.entries_count > 0);
   const latestWeight = weights[0] ? weightEntryResponse(weights[0]) : null;
   const previousWeight = weights.find((entry) => latestWeight && entry.id !== latestWeight.id);
 
   return {
     days_logged: daysWithEntries.length,
-    highest_calorie_day: maxBy(days, "calories"),
+    highest_calorie_day: daysWithEntries.length > 0 ? maxBy(daysWithEntries, "calories") : null,
     lowest_calorie_day: daysWithEntries.length > 0 ? minBy(daysWithEntries, "calories") : null,
+    logged_days_last_7_days: latest7LoggedDays,
+    logged_days_previous_7_days: previous7LoggedDays,
     avg_calories_last_7_days: latest7Averages.calories,
     avg_calories_previous_7_days: previous7Averages.calories,
     calorie_trend_delta: latest7Averages.calories - previous7Averages.calories,
