@@ -2,7 +2,6 @@ type Env = {
   WORKER_PUBLIC_URL: string;
   SUPABASE_URL: string;
   SUPABASE_SERVICE_ROLE_KEY: string;
-  OAUTH_ALLOWED_REDIRECT_URIS: string;
   OAUTH_CODE_TTL_SECONDS?: string;
   OAUTH_TOKEN_TTL_SECONDS?: string;
 };
@@ -89,7 +88,7 @@ async function authorize(request: Request, env: Env): Promise<Response> {
     return redirectWithOAuthError(redirectUri, state, "unsupported_response_type");
   }
 
-  if (!isAllowed(redirectUri, env.OAUTH_ALLOWED_REDIRECT_URIS)) {
+  if (!isAllowedChatGptRedirectUri(redirectUri)) {
     console.log("oauth_authorize_invalid_redirect_uri", { redirect_uri: redirectUri });
     return json({ error: "invalid_redirect_uri" }, 400);
   }
@@ -408,12 +407,21 @@ function redirectWithOAuthError(redirectUri: string, state: string | null, error
   return Response.redirect(url.toString(), 302);
 }
 
-function isAllowed(value: string, csv: string): boolean {
-  return csv
-    .split(",")
-    .map((item) => item.trim())
-    .filter(Boolean)
-    .includes(value);
+function isAllowedChatGptRedirectUri(value: string): boolean {
+  try {
+    const url = new URL(value);
+    const allowedHosts = new Set(["chat.openai.com", "chatgpt.com"]);
+
+    return (
+      url.protocol === "https:" &&
+      allowedHosts.has(url.hostname) &&
+      /^\/aip\/g-[A-Za-z0-9]+\/oauth\/callback$/.test(url.pathname) &&
+      url.search === "" &&
+      url.hash === ""
+    );
+  } catch {
+    return false;
+  }
 }
 
 function json(body: unknown, status = 200, headers: Record<string, string> = {}): Response {

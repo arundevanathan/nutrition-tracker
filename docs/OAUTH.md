@@ -37,7 +37,12 @@ Accepts standard OAuth query parameters:
 - `state`
 - `scope`
 
-For MVP, `response_type` must be `code`. The Worker validates `client_id` and `redirect_uri` against configured allowlists.
+For MVP, `response_type` must be `code`. The Worker accepts any `client_id` but only allows ChatGPT Action callback redirects matching:
+
+```text
+https://chat.openai.com/aip/g-*/oauth/callback
+https://chatgpt.com/aip/g-*/oauth/callback
+```
 
 If the user is not authenticated with Supabase, the Worker stores the original ChatGPT OAuth parameters server-side, then redirects to Supabase Google login using a PKCE flow.
 
@@ -155,7 +160,6 @@ Configure these as Cloudflare Worker variables or secrets:
 - `WORKER_PUBLIC_URL`
 - `SUPABASE_URL`
 - `SUPABASE_SERVICE_ROLE_KEY`
-- `OAUTH_ALLOWED_REDIRECT_URIS`
 - `OAUTH_CODE_TTL_SECONDS`
 - `OAUTH_TOKEN_TTL_SECONDS`
 
@@ -167,13 +171,13 @@ Do not commit real secrets.
 - Authorization codes and access tokens are stored only as hashes.
 - The Supabase service role key is used only server-side by the Worker.
 - OAuth client IDs are intentionally unrestricted for this POC.
-- Redirect URI validation is an exact allowlist match for MVP.
+- Redirect URI validation is restricted to ChatGPT Action callback URL patterns.
 - OAuth client secrets are not implemented for this POC.
 
 ## TODO: Production Hardening
 
 - Add OAuth client-secret validation or dynamic client registration as appropriate.
-- Add stronger redirect URI management per Custom GPT.
+- Add stronger redirect URI management per Custom GPT if the public-alpha threat model requires it.
 - Add token revocation and account unlinking.
 - Add cleanup jobs for expired login states, codes, and tokens.
 - Add rate limiting for OAuth endpoints.
