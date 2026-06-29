@@ -153,6 +153,92 @@ paths:
         "401":
           $ref: "#/components/responses/Unauthorized"
 
+  /weight-entry/{id}:
+    patch:
+      operationId: updateWeightEntry
+      summary: Update a weight entry
+      description: Updates an authenticated user's existing weight entry. Use an id from getDashboard recent_weight_entries. Do not send user_id.
+      security:
+        - OAuth2: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Weight entry id returned by getDashboard.
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateWeightEntryRequest"
+      responses:
+        "200":
+          description: Updated weight entry
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UpdateWeightEntryResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          description: Weight entry not found for the authenticated user
+
+    delete:
+      operationId: deleteWeightEntry
+      summary: Delete a weight entry
+      description: Deletes an authenticated user's existing weight entry. Use an id from getDashboard recent_weight_entries.
+      security:
+        - OAuth2: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Weight entry id returned by getDashboard.
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Deleted weight entry
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteWeightEntryResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          description: Weight entry not found for the authenticated user
+
+  /delete-all-data:
+    post:
+      operationId: deleteAllUserData
+      summary: Delete all nutrition tracking data
+      description: Deletes all food entries, weight entries, daily summaries, and API logs for the authenticated user. Requires exact confirmation text.
+      security:
+        - OAuth2: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DeleteAllUserDataRequest"
+      responses:
+        "200":
+          description: Deleted all nutrition tracking data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteAllUserDataResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
 components:
   responses:
     Unauthorized:
@@ -372,6 +458,80 @@ components:
           $ref: "#/components/schemas/WeightEntry"
         summary:
           type: string
+
+    UpdateWeightEntryRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        date:
+          type: string
+          pattern: "^\\d{4}-\\d{2}-\\d{2}$"
+        weight_kg:
+          type: number
+          exclusiveMinimum: 0
+        note:
+          type:
+            - string
+            - "null"
+
+    UpdateWeightEntryResponse:
+      type: object
+      required:
+        - weight_entry
+        - summary
+      properties:
+        weight_entry:
+          $ref: "#/components/schemas/WeightEntry"
+        summary:
+          type: string
+
+    DeleteWeightEntryResponse:
+      type: object
+      required:
+        - deleted_weight_entry
+        - summary
+      properties:
+        deleted_weight_entry:
+          $ref: "#/components/schemas/WeightEntry"
+        summary:
+          type: string
+
+    DeleteAllUserDataRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - confirmation
+      properties:
+        confirmation:
+          type: string
+          enum:
+            - DELETE ALL MY DATA
+
+    DeleteAllUserDataResponse:
+      type: object
+      required:
+        - summary
+        - deleted
+      properties:
+        summary:
+          type: string
+        deleted:
+          type: object
+          required:
+            - food_entries
+            - weight_entries
+            - daily_summaries
+            - api_logs
+          properties:
+            food_entries:
+              type: integer
+            weight_entries:
+              type: integer
+            daily_summaries:
+              type: integer
+            api_logs:
+              type: integer
 
     Dashboard:
       type: object

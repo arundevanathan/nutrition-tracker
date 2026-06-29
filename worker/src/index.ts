@@ -113,6 +113,19 @@ export default {
         return createWeightEntry(request, env);
       }
 
+      const weightEntryId = weightEntryIdFromPath(url.pathname);
+      if (weightEntryId && request.method === "PATCH") {
+        return updateWeightEntry(request, env, weightEntryId);
+      }
+
+      if (weightEntryId && request.method === "DELETE") {
+        return deleteWeightEntry(request, env, weightEntryId);
+      }
+
+      if (request.method === "POST" && url.pathname === "/delete-all-data") {
+        return deleteAllUserData(request, env);
+      }
+
       if (request.method === "GET" && url.pathname === "/dashboard") {
         return dashboard(request, env);
       }
@@ -455,6 +468,82 @@ async function createWeightEntry(request: Request, env: Env): Promise<Response> 
   );
 }
 
+async function updateWeightEntry(request: Request, env: Env, entryId: string): Promise<Response> {
+  const auth = await authenticate(request, env);
+  if (auth instanceof Response) return auth;
+
+  const parsed = await parseJsonObject(request);
+  if ("response" in parsed) return parsed.response;
+
+  const validated = validateWeightEntryUpdateBody(parsed.body);
+  if ("response" in validated) return validated.response;
+
+  const entry = await supabasePatchReturning<WeightEntryRow>(
+    env,
+    `weight_entries?id=eq.${encodeURIComponent(entryId)}&user_id=eq.${encodeURIComponent(auth.userId)}`,
+    validated.row
+  );
+
+  if (!entry) {
+    return json({ error: "weight_entry_not_found" }, 404);
+  }
+
+  return json({
+    weight_entry: weightEntryResponse(entry),
+    summary: `Updated weight for ${entry.date}: ${formatNumber(entry.weight_kg)} kg.`,
+  });
+}
+
+async function deleteWeightEntry(request: Request, env: Env, entryId: string): Promise<Response> {
+  const auth = await authenticate(request, env);
+  if (auth instanceof Response) return auth;
+
+  const entry = await supabaseDeleteReturning<WeightEntryRow>(
+    env,
+    `weight_entries?id=eq.${encodeURIComponent(entryId)}&user_id=eq.${encodeURIComponent(auth.userId)}`
+  );
+
+  if (!entry) {
+    return json({ error: "weight_entry_not_found" }, 404);
+  }
+
+  return json({
+    deleted_weight_entry: weightEntryResponse(entry),
+    summary: `Deleted weight entry for ${entry.date}.`,
+  });
+}
+
+async function deleteAllUserData(request: Request, env: Env): Promise<Response> {
+  const auth = await authenticate(request, env);
+  if (auth instanceof Response) return auth;
+
+  const parsed = await parseJsonObject(request);
+  if ("response" in parsed) return parsed.response;
+
+  const confirmation = stringField(parsed.body, "confirmation");
+  if (confirmation !== "DELETE ALL MY DATA") {
+    return validationError({ confirmation: 'confirmation must exactly equal "DELETE ALL MY DATA"' });
+  }
+
+  const userFilter = `user_id=eq.${encodeURIComponent(auth.userId)}`;
+  const [foodEntries, weightEntries, dailySummaries, apiLogs] = await Promise.all([
+    supabaseDeleteReturningMany<FoodEntryRow>(env, `food_entries?${userFilter}`),
+    supabaseDeleteReturningMany<WeightEntryRow>(env, `weight_entries?${userFilter}`),
+    supabaseDeleteReturningMany(env, `daily_summaries?${userFilter}`),
+    supabaseDeleteReturningMany(env, `api_logs?${userFilter}`),
+  ]);
+
+  return json({
+    summary: "Deleted all nutrition tracking data for this account.",
+    deleted: {
+      food_entries: foodEntries.length,
+      weight_entries: weightEntries.length,
+      daily_summaries: dailySummaries.length,
+      api_logs: apiLogs.length,
+    },
+  });
+}
+
 async function dashboard(request: Request, env: Env): Promise<Response> {
   const auth = await authenticate(request, env);
   if (auth instanceof Response) return auth;
@@ -640,6 +729,16 @@ async function supabaseDeleteReturning<T>(env: Env, pathAndQuery: string): Promi
   });
   const rows = (await response.json()) as T[];
   return rows[0] ?? null;
+}
+
+async function supabaseDeleteReturningMany<T = Record<string, unknown>>(env: Env, pathAndQuery: string): Promise<T[]> {
+  const response = await supabaseFetch(env, pathAndQuery, {
+    method: "DELETE",
+    headers: {
+      Prefer: "return=representation",
+    },
+  });
+  return (await response.json()) as T[];
 }
 
 async function supabaseFetch(env: Env, pathAndQuery: string, init: RequestInit): Promise<Response> {
@@ -840,6 +939,35 @@ function validateWeightEntryBody(body: Record<string, unknown>): { row: Record<s
       note,
     },
   };
+}
+
+function validateWeightEntryUpdateBody(body: Record<string, unknown>): { row: Record<string, unknown> } | { response: Response } {
+  const fields: ValidationFields = {};
+  const row: Record<string, unknown> = {};
+
+  if ("user_id" in body) fields.user_id = "user_id is not accepted; ownership comes from the bearer token";
+
+  if ("date" in body) {
+    const date = stringField(body, "date");
+    if (!date) fields.date = "date must be a non-empty string";
+    else if (!isIsoDate(date)) fields.date = "date must be YYYY-MM-DD";
+    else row.date = date;
+  }
+
+  if ("weight_kg" in body) {
+    const weightKg = numberField(body, "weight_kg");
+    if (weightKg === null || weightKg <= 0) fields.weight_kg = "weight_kg must be a positive number";
+    else row.weight_kg = weightKg;
+  }
+
+  if ("note" in body) {
+    row.note = optionalStringField(body, "note", fields);
+  }
+
+  if (Object.keys(fields).length > 0) return { response: validationError(fields) };
+  if (Object.keys(row).length === 0) return { response: validationError({ body: "At least one editable field is required" }) };
+
+  return { row };
 }
 
 async function todaySnapshot(env: Env, userId: string, date: string) {
@@ -1056,6 +1184,11 @@ function bearerToken(request: Request): string | null {
 
 function foodEntryIdFromPath(pathname: string): string | null {
   const match = pathname.match(/^\/food-entry\/([0-9a-fA-F-]{36})$/);
+  return match?.[1] ?? null;
+}
+
+function weightEntryIdFromPath(pathname: string): string | null {
+  const match = pathname.match(/^\/weight-entry\/([0-9a-fA-F-]{36})$/);
   return match?.[1] ?? null;
 }
 

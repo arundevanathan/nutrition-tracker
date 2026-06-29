@@ -44,6 +44,24 @@ Deletes a food entry owned by the authenticated user.
 
 Creates a weight entry.
 
+### `PATCH /weight-entry/{id}`
+
+Updates a weight entry owned by the authenticated user.
+
+### `DELETE /weight-entry/{id}`
+
+Deletes a weight entry owned by the authenticated user.
+
+### `POST /delete-all-data`
+
+Deletes all nutrition tracking data owned by the authenticated user after explicit confirmation.
+
+Required body:
+
+```json
+{ "confirmation": "DELETE ALL MY DATA" }
+```
+
 ## Response Shape Principles
 
 - GPT responses should be concise and easy to summarize in chat.
