@@ -29,7 +29,7 @@ paths:
     get:
       operationId: getDashboard
       summary: Get dashboard data
-      description: Returns today totals, last 7 days, recent foods, and recent weights for the authenticated user.
+      description: Returns today, yesterday, last 14 days, recent entries, and lightweight trend insights for the authenticated user.
       security:
         - OAuth2: []
       responses:
@@ -539,10 +539,11 @@ components:
         - user
         - today
         - yesterday
-        - last_7_days
+        - last_14_days
         - recent_food_entries
         - recent_weight_entries
         - metadata
+        - insights
       properties:
         user:
           $ref: "#/components/schemas/AuthenticatedUser"
@@ -583,7 +584,7 @@ components:
               description: All food entries logged for yesterday.
               items:
                 $ref: "#/components/schemas/FoodEntry"
-        last_7_days:
+        last_14_days:
           type: object
           required:
             - start_date
@@ -623,6 +624,10 @@ components:
               type: string
             recent_limit:
               type: integer
+            days_included:
+              type: integer
+        insights:
+          $ref: "#/components/schemas/DashboardInsights"
 
     TodaySnapshot:
       type: object
@@ -767,6 +772,57 @@ components:
           type: integer
         entries_count:
           type: number
+
+    DashboardInsights:
+      type: object
+      required:
+        - days_logged
+        - highest_calorie_day
+        - lowest_calorie_day
+        - avg_calories_last_7_days
+        - avg_calories_previous_7_days
+        - calorie_trend_delta
+        - avg_protein_last_7_days
+        - avg_protein_previous_7_days
+        - protein_trend_delta
+        - weight_latest
+        - weight_previous
+        - weight_delta
+      properties:
+        days_logged:
+          type: integer
+        highest_calorie_day:
+          anyOf:
+            - $ref: "#/components/schemas/DailyTotals"
+            - type: "null"
+        lowest_calorie_day:
+          anyOf:
+            - $ref: "#/components/schemas/DailyTotals"
+            - type: "null"
+        avg_calories_last_7_days:
+          type: integer
+        avg_calories_previous_7_days:
+          type: integer
+        calorie_trend_delta:
+          type: integer
+        avg_protein_last_7_days:
+          type: number
+        avg_protein_previous_7_days:
+          type: number
+        protein_trend_delta:
+          type: number
+        weight_latest:
+          anyOf:
+            - $ref: "#/components/schemas/WeightEntry"
+            - type: "null"
+        weight_previous:
+          anyOf:
+            - $ref: "#/components/schemas/WeightEntry"
+            - type: "null"
+        weight_delta:
+          type:
+            - number
+            - "null"
 
     ValidationError:
       type: object

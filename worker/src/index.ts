@@ -68,7 +68,7 @@ const DEFAULT_TOKEN_TTL_SECONDS = 30 * 24 * 60 * 60;
 const MEAL_TYPES = new Set<MealType>(["breakfast", "lunch", "dinner", "snack", "drink", "other"]);
 const ENTRY_TYPES = new Set<EntryType>(["Core", "Junk", "Alcohol", "Eating Out"]);
 const CONFIDENCE_VALUES = new Set<Confidence>(["high", "medium", "low"]);
-const DASHBOARD_DAYS = 7;
+const DASHBOARD_DAYS = 14;
 const RECENT_LIMIT = 10;
 
 export default {
@@ -579,6 +579,7 @@ async function dashboard(request: Request, env: Env): Promise<Response> {
   const todayFoods = rangeFoods.filter((entry) => entry.consumption_date === today);
   const yesterdayFoods = rangeFoods.filter((entry) => entry.consumption_date === yesterday);
   const averages = averageDailyTotals(dailyTotals);
+  const insights = dashboardInsights(dailyTotals, recentWeights);
   const latestWeight = recentWeights[0] ? weightEntryResponse(recentWeights[0]) : null;
 
   return json({
@@ -594,7 +595,7 @@ async function dashboard(request: Request, env: Env): Promise<Response> {
       totals: yesterdayTotals,
       food_entries: yesterdayFoods.map(foodEntryResponse),
     },
-    last_7_days: {
+    last_14_days: {
       start_date: startDate,
       end_date: today,
       days: dailyTotals,
@@ -606,7 +607,9 @@ async function dashboard(request: Request, env: Env): Promise<Response> {
       generated_at: new Date().toISOString(),
       timezone: user.timezone,
       recent_limit: RECENT_LIMIT,
+      days_included: DASHBOARD_DAYS,
     },
+    insights,
   });
 }
 
@@ -1031,6 +1034,41 @@ function averageDailyTotals(days: ReturnType<typeof summarizeFoodEntries>[]) {
     eating_out_calories: sum(days, "eating_out_calories") / divisor,
     entries_count: sum(days, "entries_count") / divisor,
   });
+}
+
+function dashboardInsights(days: ReturnType<typeof summarizeFoodEntries>[], weights: WeightEntryRow[]) {
+  const latest7 = days.slice(-7);
+  const previous7 = days.slice(0, -7);
+  const latest7Averages = averageDailyTotals(latest7);
+  const previous7Averages = averageDailyTotals(previous7);
+  const daysWithEntries = days.filter((day) => day.entries_count > 0);
+  const latestWeight = weights[0] ? weightEntryResponse(weights[0]) : null;
+  const previousWeight = weights.find((entry) => latestWeight && entry.id !== latestWeight.id);
+
+  return {
+    days_logged: daysWithEntries.length,
+    highest_calorie_day: maxBy(days, "calories"),
+    lowest_calorie_day: daysWithEntries.length > 0 ? minBy(daysWithEntries, "calories") : null,
+    avg_calories_last_7_days: latest7Averages.calories,
+    avg_calories_previous_7_days: previous7Averages.calories,
+    calorie_trend_delta: latest7Averages.calories - previous7Averages.calories,
+    avg_protein_last_7_days: latest7Averages.protein_g,
+    avg_protein_previous_7_days: previous7Averages.protein_g,
+    protein_trend_delta: Number((latest7Averages.protein_g - previous7Averages.protein_g).toFixed(2)),
+    weight_latest: latestWeight,
+    weight_previous: previousWeight ? weightEntryResponse(previousWeight) : null,
+    weight_delta: latestWeight && previousWeight ? Number((latestWeight.weight_kg - Number(previousWeight.weight_kg)).toFixed(2)) : null,
+  };
+}
+
+function maxBy<T extends Record<string, unknown>>(rows: T[], key: keyof T): T | null {
+  if (rows.length === 0) return null;
+  return rows.reduce((best, row) => (Number(row[key] ?? 0) > Number(best[key] ?? 0) ? row : best));
+}
+
+function minBy<T extends Record<string, unknown>>(rows: T[], key: keyof T): T | null {
+  if (rows.length === 0) return null;
+  return rows.reduce((best, row) => (Number(row[key] ?? 0) < Number(best[key] ?? 0) ? row : best));
 }
 
 function sum<T extends Record<string, unknown>>(rows: T[], key: keyof T): number {
