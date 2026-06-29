@@ -75,7 +75,13 @@ paths:
       security:
         - OAuth2: []
       parameters:
-        - $ref: "#/components/parameters/FoodEntryId"
+        - name: id
+          in: path
+          required: true
+          description: Food entry id returned by createFoodEntry or getDashboard.
+          schema:
+            type: string
+            format: uuid
       requestBody:
         required: true
         content:
@@ -103,7 +109,13 @@ paths:
       security:
         - OAuth2: []
       parameters:
-        - $ref: "#/components/parameters/FoodEntryId"
+        - name: id
+          in: path
+          required: true
+          description: Food entry id returned by createFoodEntry or getDashboard.
+          schema:
+            type: string
+            format: uuid
       responses:
         "200":
           description: Deleted food entry
@@ -142,16 +154,6 @@ paths:
           $ref: "#/components/responses/Unauthorized"
 
 components:
-  parameters:
-    FoodEntryId:
-      name: id
-      in: path
-      required: true
-      schema:
-        type: string
-        format: uuid
-      description: Food entry id returned by createFoodEntry or getDashboard.
-
   responses:
     Unauthorized:
       description: Missing, invalid, revoked, or expired bearer token
