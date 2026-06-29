@@ -8,7 +8,7 @@ The Cloudflare Worker is the only backend API layer. Both GPT Actions and the da
 
 MVP auth is Google login via Supabase.
 
-Implementation details are still open, but the Worker should verify authenticated requests before reading or writing user data.
+The Worker verifies authenticated requests with opaque bearer tokens issued by the Custom GPT OAuth flow before reading or writing user data.
 
 ## Minimum API Surface
 
@@ -61,9 +61,5 @@ Creates a weight entry.
 
 ## Not Yet Implemented
 
-- OpenAPI schema
-- Request and response DTOs
-- Worker route handlers
-- Auth middleware
-- Error format
 - Rate limiting
+- Food entry update/delete endpoints

@@ -22,7 +22,7 @@ The Custom GPT is the user's primary nutrition interface. It should support natu
 
 ### GPT Actions
 
-GPT Actions expose the product API to the Custom GPT through an OpenAPI schema. The schema is not implemented yet and should be added once endpoint contracts stabilize.
+GPT Actions expose the product API to the Custom GPT through `openapi/custom-gpt-action-schema.yaml`.
 
 ### Cloudflare Worker
 
@@ -55,8 +55,5 @@ The dashboard is a mobile-first web app for review and correction. It should mak
 
 Add these when implementation begins:
 
-- `openapi/` for GPT Action schemas.
 - `prompts/` for Custom GPT instructions and examples.
-- Supabase migration files.
-- Worker deployment configuration.
 - Dashboard application configuration.

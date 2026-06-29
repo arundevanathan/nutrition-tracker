@@ -1,8 +1,6 @@
-# OAuth Proof Of Concept
+# OAuth For Custom GPT Actions
 
-This proof of concept validates that a Custom GPT Action can link a user account through OAuth and call a protected Cloudflare Worker endpoint.
-
-It does not implement nutrition logging, dashboard APIs, food APIs, or weight APIs.
+This flow lets a Custom GPT Action link a user account through OAuth and call protected Cloudflare Worker endpoints.
 
 ## Goal
 
@@ -13,7 +11,7 @@ Custom GPT
   -> GPT Action OAuth
   -> Cloudflare Worker OAuth endpoints
   -> Supabase Google login
-  -> Cloudflare Worker protected /me endpoint
+  -> Cloudflare Worker protected product endpoints
   -> Supabase public.users row
 ```
 
@@ -129,15 +127,15 @@ The Worker uses that endpoint as the Supabase PKCE callback, then redirects back
 
 ## Custom GPT Action Configuration
 
-Use `openapi/oauth-test.yaml` as the action schema.
+Use `openapi/custom-gpt-action-schema.yaml` as the action schema.
 
 In the Custom GPT Action authentication settings, configure OAuth:
 
 - Authorization URL: `https://nutrition-tracker.arun-devanathan.workers.dev/oauth/authorize`
 - Token URL: `https://nutrition-tracker.arun-devanathan.workers.dev/oauth/token`
-- Scope: optional for this POC
-- Client ID: any value provided by ChatGPT is accepted for this POC
-- Client Secret: not used by this POC
+- Scope: optional for this MVP
+- Client ID: any value provided by ChatGPT is accepted for this MVP
+- Client Secret: not used by this MVP
 
 Set the OpenAPI server URL to the deployed Worker origin.
 

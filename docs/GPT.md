@@ -58,5 +58,4 @@ Add these when implementation begins:
 - Custom GPT instructions
 - GPT knowledge files
 - Conversation examples
-- OpenAPI schema for GPT Actions
 - Auth setup notes for Actions
