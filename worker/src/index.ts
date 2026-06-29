@@ -574,6 +574,10 @@ async function dashboard(request: Request, env: Env): Promise<Response> {
 
   const dailyTotals = dates.map((date) => summarizeFoodEntries(date, rangeFoods.filter((entry) => entry.consumption_date === date)));
   const todayTotals = dailyTotals[dailyTotals.length - 1];
+  const yesterday = dates[dates.length - 2];
+  const yesterdayTotals = dailyTotals[dailyTotals.length - 2];
+  const todayFoods = rangeFoods.filter((entry) => entry.consumption_date === today);
+  const yesterdayFoods = rangeFoods.filter((entry) => entry.consumption_date === yesterday);
   const averages = averageDailyTotals(dailyTotals);
   const latestWeight = recentWeights[0] ? weightEntryResponse(recentWeights[0]) : null;
 
@@ -582,7 +586,13 @@ async function dashboard(request: Request, env: Env): Promise<Response> {
     today: {
       date: today,
       totals: todayTotals,
+      food_entries: todayFoods.map(foodEntryResponse),
       latest_weight: latestWeight,
+    },
+    yesterday: {
+      date: yesterday,
+      totals: yesterdayTotals,
+      food_entries: yesterdayFoods.map(foodEntryResponse),
     },
     last_7_days: {
       start_date: startDate,

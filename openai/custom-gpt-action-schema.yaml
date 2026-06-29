@@ -538,6 +538,7 @@ components:
       required:
         - user
         - today
+        - yesterday
         - last_7_days
         - recent_food_entries
         - recent_weight_entries
@@ -550,16 +551,38 @@ components:
           required:
             - date
             - totals
+            - food_entries
             - latest_weight
           properties:
             date:
               type: string
             totals:
               $ref: "#/components/schemas/DailyTotals"
+            food_entries:
+              type: array
+              description: All food entries logged for this dashboard date.
+              items:
+                $ref: "#/components/schemas/FoodEntry"
             latest_weight:
               anyOf:
                 - $ref: "#/components/schemas/WeightEntry"
                 - type: "null"
+        yesterday:
+          type: object
+          required:
+            - date
+            - totals
+            - food_entries
+          properties:
+            date:
+              type: string
+            totals:
+              $ref: "#/components/schemas/DailyTotals"
+            food_entries:
+              type: array
+              description: All food entries logged for yesterday.
+              items:
+                $ref: "#/components/schemas/FoodEntry"
         last_7_days:
           type: object
           required:
