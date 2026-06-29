@@ -62,4 +62,3 @@ Creates a weight entry.
 ## Not Yet Implemented
 
 - Rate limiting
-- Food entry update/delete endpoints

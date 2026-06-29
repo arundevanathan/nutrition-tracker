@@ -67,6 +67,55 @@ paths:
         "401":
           $ref: "#/components/responses/Unauthorized"
 
+  /food-entry/{id}:
+    patch:
+      operationId: updateFoodEntry
+      summary: Update a food entry
+      description: Updates an authenticated user's existing food entry. Use an id from a previous log response or dashboard recent entries. Do not send user_id.
+      security:
+        - OAuth2: []
+      parameters:
+        - $ref: "#/components/parameters/FoodEntryId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateFoodEntryRequest"
+      responses:
+        "200":
+          description: Updated food entry
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UpdateFoodEntryResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          description: Food entry not found for the authenticated user
+
+    delete:
+      operationId: deleteFoodEntry
+      summary: Delete a food entry
+      description: Deletes an authenticated user's existing food entry. Use an id from a previous log response or dashboard recent entries.
+      security:
+        - OAuth2: []
+      parameters:
+        - $ref: "#/components/parameters/FoodEntryId"
+      responses:
+        "200":
+          description: Deleted food entry
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteFoodEntryResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          description: Food entry not found for the authenticated user
+
   /weight-entry:
     post:
       operationId: createWeightEntry
@@ -93,6 +142,16 @@ paths:
           $ref: "#/components/responses/Unauthorized"
 
 components:
+  parameters:
+    FoodEntryId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Food entry id returned by createFoodEntry or getDashboard.
+
   responses:
     Unauthorized:
       description: Missing, invalid, revoked, or expired bearer token
@@ -196,6 +255,95 @@ components:
         - today
       properties:
         food_entry:
+          $ref: "#/components/schemas/FoodEntry"
+        summary:
+          type: string
+        today:
+          $ref: "#/components/schemas/TodaySnapshot"
+
+    UpdateFoodEntryRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        description:
+          type: string
+          minLength: 1
+        consumption_date:
+          type: string
+          pattern: "^\\d{4}-\\d{2}-\\d{2}$"
+        consumption_time:
+          type:
+            - string
+            - "null"
+          pattern: "^\\d{2}:\\d{2}(:\\d{2})?$"
+        meal_type:
+          type:
+            - string
+            - "null"
+          enum:
+            - breakfast
+            - lunch
+            - dinner
+            - snack
+            - drink
+            - other
+            - null
+        entry_type:
+          type: string
+          enum:
+            - Core
+            - Junk
+            - Alcohol
+            - Eating Out
+        calories:
+          type: integer
+          minimum: 0
+        protein_g:
+          type: number
+          minimum: 0
+        carbs_g:
+          type: number
+          minimum: 0
+        fat_g:
+          type: number
+          minimum: 0
+        confidence:
+          type:
+            - string
+            - "null"
+          enum:
+            - high
+            - medium
+            - low
+            - null
+        notes:
+          type:
+            - string
+            - "null"
+
+    UpdateFoodEntryResponse:
+      type: object
+      required:
+        - food_entry
+        - summary
+        - today
+      properties:
+        food_entry:
+          $ref: "#/components/schemas/FoodEntry"
+        summary:
+          type: string
+        today:
+          $ref: "#/components/schemas/TodaySnapshot"
+
+    DeleteFoodEntryResponse:
+      type: object
+      required:
+        - deleted_food_entry
+        - summary
+        - today
+      properties:
+        deleted_food_entry:
           $ref: "#/components/schemas/FoodEntry"
         summary:
           type: string

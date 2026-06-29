@@ -102,6 +102,15 @@ export default {
         return createFoodEntry(request, env);
       }
 
+      const foodEntryId = foodEntryIdFromPath(url.pathname);
+      if (foodEntryId && request.method === "PATCH") {
+        return updateFoodEntry(request, env, foodEntryId);
+      }
+
+      if (foodEntryId && request.method === "DELETE") {
+        return deleteFoodEntry(request, env, foodEntryId);
+      }
+
       if (request.method === "POST" && url.pathname === "/weight-entry") {
         return createWeightEntry(request, env);
       }
@@ -368,6 +377,67 @@ async function createFoodEntry(request: Request, env: Env): Promise<Response> {
   );
 }
 
+async function updateFoodEntry(request: Request, env: Env, entryId: string): Promise<Response> {
+  const auth = await authenticate(request, env);
+  if (auth instanceof Response) return auth;
+
+  const user = await getUser(env, auth.userId);
+  if (!user) {
+    return json({ error: "user_not_found" }, 404);
+  }
+
+  const parsed = await parseJsonObject(request);
+  if ("response" in parsed) return parsed.response;
+
+  const validated = validateFoodEntryUpdateBody(parsed.body);
+  if ("response" in validated) return validated.response;
+
+  const entry = await supabasePatchReturning<FoodEntryRow>(
+    env,
+    `food_entries?id=eq.${encodeURIComponent(entryId)}&user_id=eq.${encodeURIComponent(auth.userId)}`,
+    validated.row
+  );
+
+  if (!entry) {
+    return json({ error: "food_entry_not_found" }, 404);
+  }
+
+  const today = await todaySnapshot(env, auth.userId, user, entry.consumption_date);
+
+  return json({
+    food_entry: foodEntryResponse(entry),
+    summary: `Updated ${entry.description} for ${entry.consumption_date}.`,
+    today,
+  });
+}
+
+async function deleteFoodEntry(request: Request, env: Env, entryId: string): Promise<Response> {
+  const auth = await authenticate(request, env);
+  if (auth instanceof Response) return auth;
+
+  const user = await getUser(env, auth.userId);
+  if (!user) {
+    return json({ error: "user_not_found" }, 404);
+  }
+
+  const entry = await supabaseDeleteReturning<FoodEntryRow>(
+    env,
+    `food_entries?id=eq.${encodeURIComponent(entryId)}&user_id=eq.${encodeURIComponent(auth.userId)}`
+  );
+
+  if (!entry) {
+    return json({ error: "food_entry_not_found" }, 404);
+  }
+
+  const today = await todaySnapshot(env, auth.userId, user, entry.consumption_date);
+
+  return json({
+    deleted_food_entry: foodEntryResponse(entry),
+    summary: `Deleted ${entry.description} from ${entry.consumption_date}.`,
+    today,
+  });
+}
+
 async function createWeightEntry(request: Request, env: Env): Promise<Response> {
   const auth = await authenticate(request, env);
   if (auth instanceof Response) return auth;
@@ -559,6 +629,30 @@ async function supabasePatch(env: Env, pathAndQuery: string, row: Record<string,
   });
 }
 
+async function supabasePatchReturning<T>(env: Env, pathAndQuery: string, row: Record<string, unknown>): Promise<T | null> {
+  const response = await supabaseFetch(env, pathAndQuery, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      Prefer: "return=representation",
+    },
+    body: JSON.stringify(row),
+  });
+  const rows = (await response.json()) as T[];
+  return rows[0] ?? null;
+}
+
+async function supabaseDeleteReturning<T>(env: Env, pathAndQuery: string): Promise<T | null> {
+  const response = await supabaseFetch(env, pathAndQuery, {
+    method: "DELETE",
+    headers: {
+      Prefer: "return=representation",
+    },
+  });
+  const rows = (await response.json()) as T[];
+  return rows[0] ?? null;
+}
+
 async function supabaseFetch(env: Env, pathAndQuery: string, init: RequestInit): Promise<Response> {
   const response = await fetch(`${trimTrailingSlash(env.SUPABASE_URL)}/rest/v1/${pathAndQuery}`, {
     ...init,
@@ -663,6 +757,74 @@ function validateFoodEntryBody(body: Record<string, unknown>): { row: Record<str
       notes,
     },
   };
+}
+
+function validateFoodEntryUpdateBody(body: Record<string, unknown>): { row: Record<string, unknown> } | { response: Response } {
+  const fields: ValidationFields = {};
+  const row: Record<string, unknown> = {};
+
+  if ("user_id" in body) fields.user_id = "user_id is not accepted; ownership comes from the bearer token";
+  if ("source" in body) fields.source = "source cannot be updated";
+
+  if ("description" in body) {
+    const description = stringField(body, "description");
+    if (!description) fields.description = "description must be a non-empty string";
+    else row.description = description;
+  }
+
+  if ("consumption_date" in body) {
+    const consumptionDate = stringField(body, "consumption_date");
+    if (!consumptionDate) fields.consumption_date = "consumption_date must be a non-empty string";
+    else if (!isIsoDate(consumptionDate)) fields.consumption_date = "consumption_date must be YYYY-MM-DD";
+    else row.consumption_date = consumptionDate;
+  }
+
+  if ("calories" in body) {
+    const calories = integerField(body, "calories");
+    if (calories === null || calories < 0) fields.calories = "calories must be a non-negative integer";
+    else row.calories = calories;
+  }
+
+  if ("consumption_time" in body) {
+    const consumptionTime = optionalStringField(body, "consumption_time", fields);
+    if (consumptionTime !== null && !isTime(consumptionTime)) fields.consumption_time = "consumption_time must be HH:MM or HH:MM:SS";
+    else row.consumption_time = consumptionTime;
+  }
+
+  if ("meal_type" in body) {
+    const mealType = optionalStringField(body, "meal_type", fields);
+    if (mealType !== null && !MEAL_TYPES.has(mealType as MealType)) fields.meal_type = "meal_type is invalid";
+    else row.meal_type = mealType;
+  }
+
+  if ("entry_type" in body) {
+    const entryType = optionalStringField(body, "entry_type", fields);
+    if (entryType === null || !ENTRY_TYPES.has(entryType as EntryType)) fields.entry_type = "entry_type is invalid";
+    else row.entry_type = entryType;
+  }
+
+  if ("confidence" in body) {
+    const confidence = optionalStringField(body, "confidence", fields);
+    if (confidence !== null && !CONFIDENCE_VALUES.has(confidence as Confidence)) fields.confidence = "confidence is invalid";
+    else row.confidence = confidence;
+  }
+
+  for (const key of ["protein_g", "carbs_g", "fat_g"]) {
+    if (key in body) {
+      const value = numberField(body, key);
+      if (value === null || value < 0) fields[key] = `${key} must be a non-negative number`;
+      else row[key] = value;
+    }
+  }
+
+  if ("notes" in body) {
+    row.notes = optionalStringField(body, "notes", fields);
+  }
+
+  if (Object.keys(fields).length > 0) return { response: validationError(fields) };
+  if (Object.keys(row).length === 0) return { response: validationError({ body: "At least one editable field is required" }) };
+
+  return { row };
 }
 
 function validateWeightEntryBody(body: Record<string, unknown>): { row: Record<string, unknown> } | { response: Response } {
@@ -906,6 +1068,11 @@ function formatNumber(value: number): string {
 function bearerToken(request: Request): string | null {
   const auth = request.headers.get("authorization");
   const match = auth?.match(/^Bearer\s+(.+)$/i);
+  return match?.[1] ?? null;
+}
+
+function foodEntryIdFromPath(pathname: string): string | null {
+  const match = pathname.match(/^\/food-entry\/([0-9a-fA-F-]{36})$/);
   return match?.[1] ?? null;
 }
 
