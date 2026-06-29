@@ -171,8 +171,6 @@ components:
         - user_id
         - email
         - timezone
-        - calorie_target
-        - protein_target_g
       properties:
         user_id:
           type: string
@@ -186,10 +184,6 @@ components:
             - "null"
         timezone:
           type: string
-        calorie_target:
-          type: integer
-        protein_target_g:
-          type: number
 
     CreateFoodEntryRequest:
       type: object
@@ -396,23 +390,12 @@ components:
           required:
             - date
             - totals
-            - remaining
             - latest_weight
           properties:
             date:
               type: string
             totals:
               $ref: "#/components/schemas/DailyTotals"
-            remaining:
-              type: object
-              required:
-                - calories
-                - protein_g
-              properties:
-                calories:
-                  type: number
-                protein_g:
-                  type: number
             latest_weight:
               anyOf:
                 - $ref: "#/components/schemas/WeightEntry"
@@ -463,22 +446,11 @@ components:
       required:
         - date
         - totals
-        - remaining
       properties:
         date:
           type: string
         totals:
           $ref: "#/components/schemas/DailyTotals"
-        remaining:
-          type: object
-          required:
-            - calories
-            - protein_g
-          properties:
-            calories:
-              type: number
-            protein_g:
-              type: number
 
     FoodEntry:
       type: object

@@ -38,8 +38,8 @@ When given dashboard JSON, the GPT should format it into a concise user-facing s
 
 Include:
 
-- Today: calories, protein, and remaining targets where available.
-- Last 7 days: averages, target adherence, and weight change where available.
+- Today: calories, protein, carbs, fat, and entries count.
+- Last 7 days: averages, recent foods, and weight change where available.
 - Recent entries: notable meals or corrections.
 
 Avoid exposing raw JSON unless the user explicitly requests it.

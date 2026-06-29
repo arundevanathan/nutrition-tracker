@@ -23,7 +23,6 @@ Returns dashboard-ready summary data.
 Expected content:
 
 - Today totals
-- Remaining calories and protein where targets exist
 - Last 7 days averages
 - Recent food entries
 - Recent weight entries

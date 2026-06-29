@@ -88,9 +88,7 @@ Returns:
   "user_id": "supabase-user-id",
   "email": "user@example.com",
   "display_name": "Example User",
-  "timezone": "Asia/Kolkata",
-  "calorie_target": 2000,
-  "protein_target_g": 120
+  "timezone": "Asia/Kolkata"
 }
 ```
 

@@ -22,8 +22,6 @@ type UserRow = {
   email: string;
   display_name: string | null;
   timezone: string;
-  calorie_target: number;
-  protein_target_g: number;
 };
 
 type FoodEntryRow = {
@@ -349,11 +347,6 @@ async function createFoodEntry(request: Request, env: Env): Promise<Response> {
   const auth = await authenticate(request, env);
   if (auth instanceof Response) return auth;
 
-  const user = await getUser(env, auth.userId);
-  if (!user) {
-    return json({ error: "user_not_found" }, 404);
-  }
-
   const parsed = await parseJsonObject(request);
   if ("response" in parsed) return parsed.response;
 
@@ -365,7 +358,7 @@ async function createFoodEntry(request: Request, env: Env): Promise<Response> {
     source: "gpt",
     ...validated.row,
   });
-  const today = await todaySnapshot(env, auth.userId, user, entry.consumption_date);
+  const today = await todaySnapshot(env, auth.userId, entry.consumption_date);
 
   return json(
     {
@@ -402,7 +395,7 @@ async function updateFoodEntry(request: Request, env: Env, entryId: string): Pro
     return json({ error: "food_entry_not_found" }, 404);
   }
 
-  const today = await todaySnapshot(env, auth.userId, user, entry.consumption_date);
+  const today = await todaySnapshot(env, auth.userId, entry.consumption_date);
 
   return json({
     food_entry: foodEntryResponse(entry),
@@ -429,7 +422,7 @@ async function deleteFoodEntry(request: Request, env: Env, entryId: string): Pro
     return json({ error: "food_entry_not_found" }, 404);
   }
 
-  const today = await todaySnapshot(env, auth.userId, user, entry.consumption_date);
+  const today = await todaySnapshot(env, auth.userId, entry.consumption_date);
 
   return json({
     deleted_food_entry: foodEntryResponse(entry),
@@ -500,10 +493,6 @@ async function dashboard(request: Request, env: Env): Promise<Response> {
     today: {
       date: today,
       totals: todayTotals,
-      remaining: {
-        calories: user.calorie_target - todayTotals.calories,
-        protein_g: Number(user.protein_target_g) - todayTotals.protein_g,
-      },
       latest_weight: latestWeight,
     },
     last_7_days: {
@@ -546,7 +535,7 @@ async function authenticate(request: Request, env: Env): Promise<AuthContext | R
 async function getUser(env: Env, userId: string): Promise<UserRow | null> {
   const users = await supabaseSelect<UserRow>(
     env,
-    `users?id=eq.${encodeURIComponent(userId)}&select=id,email,display_name,timezone,calorie_target,protein_target_g`
+    `users?id=eq.${encodeURIComponent(userId)}&select=id,email,display_name,timezone`
   );
   return users[0] ?? null;
 }
@@ -853,7 +842,7 @@ function validateWeightEntryBody(body: Record<string, unknown>): { row: Record<s
   };
 }
 
-async function todaySnapshot(env: Env, userId: string, user: UserRow, date: string) {
+async function todaySnapshot(env: Env, userId: string, date: string) {
   const foods = await supabaseSelect<FoodEntryRow>(
     env,
     `food_entries?user_id=eq.${encodeURIComponent(userId)}&consumption_date=eq.${date}&select=*`
@@ -863,10 +852,6 @@ async function todaySnapshot(env: Env, userId: string, user: UserRow, date: stri
   return {
     date,
     totals,
-    remaining: {
-      calories: user.calorie_target - totals.calories,
-      protein_g: Number(user.protein_target_g) - totals.protein_g,
-    },
   };
 }
 
@@ -935,8 +920,6 @@ function userResponse(user: UserRow) {
     email: user.email,
     display_name: user.display_name,
     timezone: user.timezone,
-    calorie_target: user.calorie_target,
-    protein_target_g: Number(user.protein_target_g),
   };
 }
 
