@@ -1,8 +1,8 @@
 openapi: 3.1.0
 info:
-  title: Nutrition Tracker OAuth Test
-  version: 0.1.0
-  description: Minimal Custom GPT Action for validating OAuth account linking.
+  title: Nutrition Tracker GPT Actions
+  version: 0.2.0
+  description: MVP Custom GPT Actions for authenticated nutrition logging and dashboard retrieval.
 
 servers:
   - url: https://nutrition-tracker.arun-devanathan.workers.dev
@@ -12,7 +12,7 @@ paths:
     get:
       operationId: getAuthenticatedUser
       summary: Get authenticated user details
-      description: Returns the Supabase user details associated with the linked Custom GPT account.
+      description: Returns the nutrition profile associated with the linked Custom GPT account.
       security:
         - OAuth2: []
       responses:
@@ -23,9 +23,86 @@ paths:
               schema:
                 $ref: "#/components/schemas/AuthenticatedUser"
         "401":
-          description: Missing, invalid, or expired bearer token
+          $ref: "#/components/responses/Unauthorized"
+
+  /dashboard:
+    get:
+      operationId: getDashboard
+      summary: Get dashboard data
+      description: Returns today totals, last 7 days, recent foods, and recent weights for the authenticated user.
+      security:
+        - OAuth2: []
+      responses:
+        "200":
+          description: Dashboard data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Dashboard"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /food-entry:
+    post:
+      operationId: createFoodEntry
+      summary: Log a food entry
+      description: Creates a food entry owned by the authenticated bearer token user. Do not send user_id.
+      security:
+        - OAuth2: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateFoodEntryRequest"
+      responses:
+        "201":
+          description: Created food entry
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreateFoodEntryResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /weight-entry:
+    post:
+      operationId: createWeightEntry
+      summary: Log a weight entry
+      description: Creates or updates the authenticated user's weight entry for a date. Do not send user_id.
+      security:
+        - OAuth2: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateWeightEntryRequest"
+      responses:
+        "201":
+          description: Saved weight entry
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreateWeightEntryResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
 
 components:
+  responses:
+    Unauthorized:
+      description: Missing, invalid, revoked, or expired bearer token
+    ValidationError:
+      description: Request validation failed
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ValidationError"
+
   schemas:
     AuthenticatedUser:
       type: object
@@ -38,18 +115,345 @@ components:
       properties:
         user_id:
           type: string
+          format: uuid
         email:
           type: string
           format: email
         display_name:
-          type: string
-          nullable: true
+          type:
+            - string
+            - "null"
         timezone:
           type: string
         calorie_target:
           type: integer
         protein_target_g:
           type: number
+
+    CreateFoodEntryRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - description
+        - consumption_date
+        - calories
+      properties:
+        description:
+          type: string
+          minLength: 1
+        consumption_date:
+          type: string
+          pattern: "^\\d{4}-\\d{2}-\\d{2}$"
+        consumption_time:
+          type: string
+          pattern: "^\\d{2}:\\d{2}(:\\d{2})?$"
+        meal_type:
+          type: string
+          enum:
+            - breakfast
+            - lunch
+            - dinner
+            - snack
+            - drink
+            - other
+        entry_type:
+          type: string
+          enum:
+            - Core
+            - Junk
+            - Alcohol
+            - Eating Out
+          default: Core
+        calories:
+          type: integer
+          minimum: 0
+        protein_g:
+          type: number
+          minimum: 0
+          default: 0
+        carbs_g:
+          type: number
+          minimum: 0
+          default: 0
+        fat_g:
+          type: number
+          minimum: 0
+          default: 0
+        confidence:
+          type: string
+          enum:
+            - high
+            - medium
+            - low
+        notes:
+          type: string
+
+    CreateFoodEntryResponse:
+      type: object
+      required:
+        - food_entry
+        - summary
+      properties:
+        food_entry:
+          $ref: "#/components/schemas/FoodEntry"
+        summary:
+          type: string
+
+    CreateWeightEntryRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - date
+        - weight_kg
+      properties:
+        date:
+          type: string
+          pattern: "^\\d{4}-\\d{2}-\\d{2}$"
+        weight_kg:
+          type: number
+          exclusiveMinimum: 0
+        note:
+          type: string
+
+    CreateWeightEntryResponse:
+      type: object
+      required:
+        - weight_entry
+        - summary
+      properties:
+        weight_entry:
+          $ref: "#/components/schemas/WeightEntry"
+        summary:
+          type: string
+
+    Dashboard:
+      type: object
+      required:
+        - user
+        - today
+        - last_7_days
+        - recent_food_entries
+        - recent_weight_entries
+        - metadata
+      properties:
+        user:
+          $ref: "#/components/schemas/AuthenticatedUser"
+        today:
+          type: object
+          required:
+            - date
+            - totals
+            - remaining
+            - latest_weight
+          properties:
+            date:
+              type: string
+            totals:
+              $ref: "#/components/schemas/DailyTotals"
+            remaining:
+              type: object
+              required:
+                - calories
+                - protein_g
+              properties:
+                calories:
+                  type: number
+                protein_g:
+                  type: number
+            latest_weight:
+              anyOf:
+                - $ref: "#/components/schemas/WeightEntry"
+                - type: "null"
+        last_7_days:
+          type: object
+          required:
+            - start_date
+            - end_date
+            - days
+            - averages
+          properties:
+            start_date:
+              type: string
+            end_date:
+              type: string
+            days:
+              type: array
+              items:
+                $ref: "#/components/schemas/DailyTotals"
+            averages:
+              $ref: "#/components/schemas/DailyAverages"
+        recent_food_entries:
+          type: array
+          items:
+            $ref: "#/components/schemas/FoodEntry"
+        recent_weight_entries:
+          type: array
+          items:
+            $ref: "#/components/schemas/WeightEntry"
+        metadata:
+          type: object
+          required:
+            - generated_at
+            - timezone
+            - recent_limit
+          properties:
+            generated_at:
+              type: string
+              format: date-time
+            timezone:
+              type: string
+            recent_limit:
+              type: integer
+
+    FoodEntry:
+      type: object
+      required:
+        - id
+        - logged_at
+        - consumption_date
+        - entry_type
+        - description
+        - calories
+        - protein_g
+        - carbs_g
+        - fat_g
+        - source
+      properties:
+        id:
+          type: string
+          format: uuid
+        logged_at:
+          type: string
+          format: date-time
+        consumption_date:
+          type: string
+        consumption_time:
+          type:
+            - string
+            - "null"
+        meal_type:
+          type:
+            - string
+            - "null"
+        entry_type:
+          type: string
+        description:
+          type: string
+        calories:
+          type: integer
+        protein_g:
+          type: number
+        carbs_g:
+          type: number
+        fat_g:
+          type: number
+        confidence:
+          type:
+            - string
+            - "null"
+        source:
+          type: string
+        notes:
+          type:
+            - string
+            - "null"
+
+    WeightEntry:
+      type: object
+      required:
+        - id
+        - date
+        - weight_kg
+      properties:
+        id:
+          type: string
+          format: uuid
+        date:
+          type: string
+        weight_kg:
+          type: number
+        note:
+          type:
+            - string
+            - "null"
+
+    DailyTotals:
+      type: object
+      required:
+        - date
+        - calories
+        - protein_g
+        - carbs_g
+        - fat_g
+        - junk_calories
+        - alcohol_calories
+        - eating_out_calories
+        - entries_count
+      properties:
+        date:
+          type: string
+        calories:
+          type: integer
+        protein_g:
+          type: number
+        carbs_g:
+          type: number
+        fat_g:
+          type: number
+        junk_calories:
+          type: integer
+        alcohol_calories:
+          type: integer
+        eating_out_calories:
+          type: integer
+        entries_count:
+          type: integer
+
+    DailyAverages:
+      type: object
+      required:
+        - calories
+        - protein_g
+        - carbs_g
+        - fat_g
+        - junk_calories
+        - alcohol_calories
+        - eating_out_calories
+        - entries_count
+      properties:
+        calories:
+          type: integer
+        protein_g:
+          type: number
+        carbs_g:
+          type: number
+        fat_g:
+          type: number
+        junk_calories:
+          type: integer
+        alcohol_calories:
+          type: integer
+        eating_out_calories:
+          type: integer
+        entries_count:
+          type: number
+
+    ValidationError:
+      type: object
+      required:
+        - error
+        - message
+        - fields
+      properties:
+        error:
+          type: string
+          const: validation_error
+        message:
+          type: string
+        fields:
+          type: object
+          additionalProperties:
+            type: string
 
   securitySchemes:
     OAuth2:

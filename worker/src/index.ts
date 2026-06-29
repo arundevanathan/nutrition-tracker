@@ -26,8 +26,52 @@ type UserRow = {
   protein_target_g: number;
 };
 
+type FoodEntryRow = {
+  id: string;
+  user_id: string;
+  logged_at: string;
+  consumption_date: string;
+  consumption_time: string | null;
+  meal_type: MealType | null;
+  entry_type: EntryType;
+  description: string;
+  calories: number;
+  protein_g: number;
+  carbs_g: number;
+  fat_g: number;
+  confidence: Confidence | null;
+  source: string;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+type WeightEntryRow = {
+  id: string;
+  user_id: string;
+  date: string;
+  weight_kg: number;
+  note: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+type AuthContext = {
+  userId: string;
+};
+
+type MealType = "breakfast" | "lunch" | "dinner" | "snack" | "drink" | "other";
+type EntryType = "Core" | "Junk" | "Alcohol" | "Eating Out";
+type Confidence = "high" | "medium" | "low";
+type ValidationFields = Record<string, string>;
+
 const DEFAULT_CODE_TTL_SECONDS = 5 * 60;
 const DEFAULT_TOKEN_TTL_SECONDS = 30 * 24 * 60 * 60;
+const MEAL_TYPES = new Set<MealType>(["breakfast", "lunch", "dinner", "snack", "drink", "other"]);
+const ENTRY_TYPES = new Set<EntryType>(["Core", "Junk", "Alcohol", "Eating Out"]);
+const CONFIDENCE_VALUES = new Set<Confidence>(["high", "medium", "low"]);
+const DASHBOARD_DAYS = 7;
+const RECENT_LIMIT = 10;
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -52,6 +96,18 @@ export default {
 
       if (request.method === "GET" && url.pathname === "/me") {
         return me(request, env);
+      }
+
+      if (request.method === "POST" && url.pathname === "/food-entry") {
+        return createFoodEntry(request, env);
+      }
+
+      if (request.method === "POST" && url.pathname === "/weight-entry") {
+        return createWeightEntry(request, env);
+      }
+
+      if (request.method === "GET" && url.pathname === "/dashboard") {
+        return dashboard(request, env);
       }
 
       return json({ error: "not_found" }, 404);
@@ -268,6 +324,128 @@ async function token(request: Request, env: Env): Promise<Response> {
 }
 
 async function me(request: Request, env: Env): Promise<Response> {
+  const auth = await authenticate(request, env);
+  if (auth instanceof Response) return auth;
+
+  const user = await getUser(env, auth.userId);
+
+  if (!user) {
+    return json({ error: "user_not_found" }, 404);
+  }
+
+  return json(userResponse(user));
+}
+
+async function createFoodEntry(request: Request, env: Env): Promise<Response> {
+  const auth = await authenticate(request, env);
+  if (auth instanceof Response) return auth;
+
+  const parsed = await parseJsonObject(request);
+  if ("response" in parsed) return parsed.response;
+
+  const validated = validateFoodEntryBody(parsed.body);
+  if ("response" in validated) return validated.response;
+
+  const entry = await supabaseInsertReturning<FoodEntryRow>(env, "food_entries", {
+    user_id: auth.userId,
+    source: "gpt",
+    ...validated.row,
+  });
+
+  return json(
+    {
+      food_entry: foodEntryResponse(entry),
+      summary: `Logged ${entry.description} for ${entry.consumption_date}: ${entry.calories} calories, ${formatNumber(entry.protein_g)}g protein.`,
+    },
+    201
+  );
+}
+
+async function createWeightEntry(request: Request, env: Env): Promise<Response> {
+  const auth = await authenticate(request, env);
+  if (auth instanceof Response) return auth;
+
+  const parsed = await parseJsonObject(request);
+  if ("response" in parsed) return parsed.response;
+
+  const validated = validateWeightEntryBody(parsed.body);
+  if ("response" in validated) return validated.response;
+
+  const entry = await supabaseUpsertReturning<WeightEntryRow>(env, "weight_entries", "user_id,date", {
+    user_id: auth.userId,
+    ...validated.row,
+  });
+
+  return json(
+    {
+      weight_entry: weightEntryResponse(entry),
+      summary: `Saved ${formatNumber(entry.weight_kg)} kg for ${entry.date}.`,
+    },
+    201
+  );
+}
+
+async function dashboard(request: Request, env: Env): Promise<Response> {
+  const auth = await authenticate(request, env);
+  if (auth instanceof Response) return auth;
+
+  const user = await getUser(env, auth.userId);
+  if (!user) {
+    return json({ error: "user_not_found" }, 404);
+  }
+
+  const today = localDateString(user.timezone);
+  const dates = lastNDates(today, DASHBOARD_DAYS);
+  const startDate = dates[0];
+
+  const [rangeFoods, recentFoods, recentWeights] = await Promise.all([
+    supabaseSelect<FoodEntryRow>(
+      env,
+      `food_entries?user_id=eq.${encodeURIComponent(auth.userId)}&consumption_date=gte.${startDate}&consumption_date=lte.${today}&select=*&order=consumption_date.desc,logged_at.desc`
+    ),
+    supabaseSelect<FoodEntryRow>(
+      env,
+      `food_entries?user_id=eq.${encodeURIComponent(auth.userId)}&select=*&order=logged_at.desc&limit=${RECENT_LIMIT}`
+    ),
+    supabaseSelect<WeightEntryRow>(
+      env,
+      `weight_entries?user_id=eq.${encodeURIComponent(auth.userId)}&select=*&order=date.desc&limit=${RECENT_LIMIT}`
+    ),
+  ]);
+
+  const dailyTotals = dates.map((date) => summarizeFoodEntries(date, rangeFoods.filter((entry) => entry.consumption_date === date)));
+  const todayTotals = dailyTotals[dailyTotals.length - 1];
+  const averages = averageDailyTotals(dailyTotals);
+  const latestWeight = recentWeights[0] ? weightEntryResponse(recentWeights[0]) : null;
+
+  return json({
+    user: userResponse(user),
+    today: {
+      date: today,
+      totals: todayTotals,
+      remaining: {
+        calories: user.calorie_target - todayTotals.calories,
+        protein_g: Number(user.protein_target_g) - todayTotals.protein_g,
+      },
+      latest_weight: latestWeight,
+    },
+    last_7_days: {
+      start_date: startDate,
+      end_date: today,
+      days: dailyTotals,
+      averages,
+    },
+    recent_food_entries: recentFoods.map(foodEntryResponse),
+    recent_weight_entries: recentWeights.map(weightEntryResponse),
+    metadata: {
+      generated_at: new Date().toISOString(),
+      timezone: user.timezone,
+      recent_limit: RECENT_LIMIT,
+    },
+  });
+}
+
+async function authenticate(request: Request, env: Env): Promise<AuthContext | Response> {
   const tokenValue = bearerToken(request);
 
   if (!tokenValue) {
@@ -285,24 +463,15 @@ async function me(request: Request, env: Env): Promise<Response> {
     return json({ error: "unauthorized" }, 401, { "WWW-Authenticate": "Bearer" });
   }
 
+  return { userId: tokenRow.user_id };
+}
+
+async function getUser(env: Env, userId: string): Promise<UserRow | null> {
   const users = await supabaseSelect<UserRow>(
     env,
-    `users?id=eq.${encodeURIComponent(tokenRow.user_id)}&select=id,email,display_name,timezone,calorie_target,protein_target_g`
+    `users?id=eq.${encodeURIComponent(userId)}&select=id,email,display_name,timezone,calorie_target,protein_target_g`
   );
-  const user = users[0];
-
-  if (!user) {
-    return json({ error: "user_not_found" }, 404);
-  }
-
-  return json({
-    user_id: user.id,
-    email: user.email,
-    display_name: user.display_name,
-    timezone: user.timezone,
-    calorie_target: user.calorie_target,
-    protein_target_g: user.protein_target_g,
-  });
+  return users[0] ?? null;
 }
 
 async function exchangeSupabaseCode(env: Env, authCode: string, codeVerifier: string): Promise<{ user?: { id?: string } }> {
@@ -344,6 +513,32 @@ async function supabaseInsert(env: Env, table: string, row: Record<string, unkno
     },
     body: JSON.stringify(row),
   });
+}
+
+async function supabaseInsertReturning<T>(env: Env, table: string, row: Record<string, unknown>): Promise<T> {
+  const response = await supabaseFetch(env, table, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Prefer: "return=representation",
+    },
+    body: JSON.stringify(row),
+  });
+  const rows = (await response.json()) as T[];
+  return rows[0];
+}
+
+async function supabaseUpsertReturning<T>(env: Env, table: string, onConflict: string, row: Record<string, unknown>): Promise<T> {
+  const response = await supabaseFetch(env, `${table}?on_conflict=${encodeURIComponent(onConflict)}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Prefer: "resolution=merge-duplicates,return=representation",
+    },
+    body: JSON.stringify(row),
+  });
+  const rows = (await response.json()) as T[];
+  return rows[0];
 }
 
 async function supabasePatch(env: Env, pathAndQuery: string, row: Record<string, unknown>): Promise<void> {
@@ -392,6 +587,296 @@ async function parseFormOrJson(request: Request): Promise<Map<string, string>> {
     if (typeof value === "string") values.set(key, value);
   }
   return values;
+}
+
+async function parseJsonObject(request: Request): Promise<{ body: Record<string, unknown> } | { response: Response }> {
+  const contentType = request.headers.get("content-type") ?? "";
+  if (!contentType.includes("application/json")) {
+    return { response: validationError({ body: "Content-Type must be application/json" }) };
+  }
+
+  try {
+    const body = (await request.json()) as unknown;
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+      return { response: validationError({ body: "JSON body must be an object" }) };
+    }
+    return { body: body as Record<string, unknown> };
+  } catch {
+    return { response: validationError({ body: "JSON body must be valid JSON" }) };
+  }
+}
+
+function validateFoodEntryBody(body: Record<string, unknown>): { row: Record<string, unknown> } | { response: Response } {
+  const fields: ValidationFields = {};
+
+  if ("user_id" in body) fields.user_id = "user_id is not accepted; ownership comes from the bearer token";
+
+  const description = stringField(body, "description");
+  if (!description) fields.description = "description is required";
+
+  const consumptionDate = stringField(body, "consumption_date");
+  if (!consumptionDate) fields.consumption_date = "consumption_date is required";
+  else if (!isIsoDate(consumptionDate)) fields.consumption_date = "consumption_date must be YYYY-MM-DD";
+
+  const calories = integerField(body, "calories");
+  if (calories === null) fields.calories = "calories is required";
+  else if (calories < 0) fields.calories = "calories must be a non-negative integer";
+
+  const consumptionTime = optionalStringField(body, "consumption_time", fields);
+  if (consumptionTime !== null && !isTime(consumptionTime)) fields.consumption_time = "consumption_time must be HH:MM or HH:MM:SS";
+
+  const mealType = optionalStringField(body, "meal_type", fields);
+  if (mealType !== null && !MEAL_TYPES.has(mealType as MealType)) fields.meal_type = "meal_type is invalid";
+
+  const entryType = optionalStringField(body, "entry_type", fields) ?? "Core";
+  if (!ENTRY_TYPES.has(entryType as EntryType)) fields.entry_type = "entry_type is invalid";
+
+  const confidence = optionalStringField(body, "confidence", fields);
+  if (confidence !== null && !CONFIDENCE_VALUES.has(confidence as Confidence)) fields.confidence = "confidence is invalid";
+
+  const proteinG = optionalNonNegativeNumber(body, "protein_g", fields);
+  const carbsG = optionalNonNegativeNumber(body, "carbs_g", fields);
+  const fatG = optionalNonNegativeNumber(body, "fat_g", fields);
+  const notes = optionalStringField(body, "notes", fields);
+
+  if (Object.keys(fields).length > 0) return { response: validationError(fields) };
+
+  return {
+    row: {
+      description,
+      consumption_date: consumptionDate,
+      consumption_time: consumptionTime,
+      meal_type: mealType,
+      entry_type: entryType,
+      calories,
+      protein_g: proteinG ?? 0,
+      carbs_g: carbsG ?? 0,
+      fat_g: fatG ?? 0,
+      confidence,
+      notes,
+    },
+  };
+}
+
+function validateWeightEntryBody(body: Record<string, unknown>): { row: Record<string, unknown> } | { response: Response } {
+  const fields: ValidationFields = {};
+
+  if ("user_id" in body) fields.user_id = "user_id is not accepted; ownership comes from the bearer token";
+
+  const date = stringField(body, "date");
+  if (!date) fields.date = "date is required";
+  else if (!isIsoDate(date)) fields.date = "date must be YYYY-MM-DD";
+
+  const weightKg = numberField(body, "weight_kg");
+  if (weightKg === null) fields.weight_kg = "weight_kg is required";
+  else if (weightKg <= 0) fields.weight_kg = "weight_kg must be a positive number";
+
+  const note = optionalStringField(body, "note", fields);
+
+  if (Object.keys(fields).length > 0) return { response: validationError(fields) };
+
+  return {
+    row: {
+      date,
+      weight_kg: weightKg,
+      note,
+    },
+  };
+}
+
+function summarizeFoodEntries(date: string, entries: FoodEntryRow[]) {
+  const totals = {
+    date,
+    calories: 0,
+    protein_g: 0,
+    carbs_g: 0,
+    fat_g: 0,
+    junk_calories: 0,
+    alcohol_calories: 0,
+    eating_out_calories: 0,
+    entries_count: entries.length,
+  };
+
+  for (const entry of entries) {
+    totals.calories += Number(entry.calories);
+    totals.protein_g += Number(entry.protein_g);
+    totals.carbs_g += Number(entry.carbs_g);
+    totals.fat_g += Number(entry.fat_g);
+    if (entry.entry_type === "Junk") totals.junk_calories += Number(entry.calories);
+    if (entry.entry_type === "Alcohol") totals.alcohol_calories += Number(entry.calories);
+    if (entry.entry_type === "Eating Out") totals.eating_out_calories += Number(entry.calories);
+  }
+
+  return roundTotals(totals);
+}
+
+function averageDailyTotals(days: ReturnType<typeof summarizeFoodEntries>[]) {
+  const divisor = days.length || 1;
+  return roundTotals({
+    calories: sum(days, "calories") / divisor,
+    protein_g: sum(days, "protein_g") / divisor,
+    carbs_g: sum(days, "carbs_g") / divisor,
+    fat_g: sum(days, "fat_g") / divisor,
+    junk_calories: sum(days, "junk_calories") / divisor,
+    alcohol_calories: sum(days, "alcohol_calories") / divisor,
+    eating_out_calories: sum(days, "eating_out_calories") / divisor,
+    entries_count: sum(days, "entries_count") / divisor,
+  });
+}
+
+function sum<T extends Record<string, unknown>>(rows: T[], key: keyof T): number {
+  return rows.reduce((total, row) => total + Number(row[key] ?? 0), 0);
+}
+
+function roundTotals<T extends Record<string, unknown>>(totals: T): T {
+  const rounded: Record<string, unknown> = { ...totals };
+  for (const key of ["protein_g", "carbs_g", "fat_g", "entries_count"] as const) {
+    if (typeof rounded[key] === "number") {
+      rounded[key] = Number(rounded[key].toFixed(2));
+    }
+  }
+  for (const key of ["calories", "junk_calories", "alcohol_calories", "eating_out_calories"] as const) {
+    if (typeof rounded[key] === "number") {
+      rounded[key] = Math.round(rounded[key]);
+    }
+  }
+  return rounded as T;
+}
+
+function userResponse(user: UserRow) {
+  return {
+    user_id: user.id,
+    email: user.email,
+    display_name: user.display_name,
+    timezone: user.timezone,
+    calorie_target: user.calorie_target,
+    protein_target_g: Number(user.protein_target_g),
+  };
+}
+
+function foodEntryResponse(entry: FoodEntryRow) {
+  return {
+    id: entry.id,
+    logged_at: entry.logged_at,
+    consumption_date: entry.consumption_date,
+    consumption_time: entry.consumption_time,
+    meal_type: entry.meal_type,
+    entry_type: entry.entry_type,
+    description: entry.description,
+    calories: Number(entry.calories),
+    protein_g: Number(entry.protein_g),
+    carbs_g: Number(entry.carbs_g),
+    fat_g: Number(entry.fat_g),
+    confidence: entry.confidence,
+    source: entry.source,
+    notes: entry.notes,
+  };
+}
+
+function weightEntryResponse(entry: WeightEntryRow) {
+  return {
+    id: entry.id,
+    date: entry.date,
+    weight_kg: Number(entry.weight_kg),
+    note: entry.note,
+  };
+}
+
+function validationError(fields: ValidationFields): Response {
+  return json(
+    {
+      error: "validation_error",
+      message: "Request validation failed",
+      fields,
+    },
+    400
+  );
+}
+
+function stringField(body: Record<string, unknown>, key: string): string | null {
+  const value = body[key];
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function optionalStringField(body: Record<string, unknown>, key: string, fields: ValidationFields): string | null {
+  if (!(key in body) || body[key] === null) return null;
+  if (typeof body[key] !== "string") {
+    fields[key] = `${key} must be a string`;
+    return null;
+  }
+  return body[key].trim() || null;
+}
+
+function integerField(body: Record<string, unknown>, key: string): number | null {
+  const value = body[key];
+  return typeof value === "number" && Number.isInteger(value) ? value : null;
+}
+
+function numberField(body: Record<string, unknown>, key: string): number | null {
+  const value = body[key];
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function optionalNonNegativeNumber(body: Record<string, unknown>, key: string, fields: ValidationFields): number | null {
+  if (!(key in body) || body[key] === null) return null;
+  const value = numberField(body, key);
+  if (value === null || value < 0) {
+    fields[key] = `${key} must be a non-negative number`;
+    return null;
+  }
+  return value;
+}
+
+function isIsoDate(value: string): boolean {
+  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return false;
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const date = new Date(Date.UTC(year, month - 1, day));
+
+  return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day;
+}
+
+function isTime(value: string): boolean {
+  const match = value.match(/^(\d{2}):(\d{2})(?::(\d{2}))?$/);
+  if (!match) return false;
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  const seconds = match[3] ? Number(match[3]) : 0;
+  return hours <= 23 && minutes <= 59 && seconds <= 59;
+}
+
+function localDateString(timezone: string): string {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: timezone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const year = parts.find((part) => part.type === "year")?.value;
+  const month = parts.find((part) => part.type === "month")?.value;
+  const day = parts.find((part) => part.type === "day")?.value;
+  return `${year}-${month}-${day}`;
+}
+
+function lastNDates(endDate: string, count: number): string[] {
+  const dates: string[] = [];
+  const [year, month, day] = endDate.split("-").map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+
+  for (let offset = count - 1; offset >= 0; offset--) {
+    const current = new Date(date);
+    current.setUTCDate(date.getUTCDate() - offset);
+    dates.push(current.toISOString().slice(0, 10));
+  }
+
+  return dates;
+}
+
+function formatNumber(value: number): string {
+  return Number(value).toFixed(2).replace(/\.?0+$/, "");
 }
 
 function bearerToken(request: Request): string | null {
