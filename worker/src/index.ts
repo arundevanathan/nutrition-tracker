@@ -340,6 +340,11 @@ async function createFoodEntry(request: Request, env: Env): Promise<Response> {
   const auth = await authenticate(request, env);
   if (auth instanceof Response) return auth;
 
+  const user = await getUser(env, auth.userId);
+  if (!user) {
+    return json({ error: "user_not_found" }, 404);
+  }
+
   const parsed = await parseJsonObject(request);
   if ("response" in parsed) return parsed.response;
 
@@ -351,11 +356,13 @@ async function createFoodEntry(request: Request, env: Env): Promise<Response> {
     source: "gpt",
     ...validated.row,
   });
+  const today = await todaySnapshot(env, auth.userId, user, entry.consumption_date);
 
   return json(
     {
       food_entry: foodEntryResponse(entry),
       summary: `Logged ${entry.description} for ${entry.consumption_date}: ${entry.calories} calories, ${formatNumber(entry.protein_g)}g protein.`,
+      today,
     },
     201
   );
@@ -680,6 +687,23 @@ function validateWeightEntryBody(body: Record<string, unknown>): { row: Record<s
       date,
       weight_kg: weightKg,
       note,
+    },
+  };
+}
+
+async function todaySnapshot(env: Env, userId: string, user: UserRow, date: string) {
+  const foods = await supabaseSelect<FoodEntryRow>(
+    env,
+    `food_entries?user_id=eq.${encodeURIComponent(userId)}&consumption_date=eq.${date}&select=*`
+  );
+  const totals = summarizeFoodEntries(date, foods);
+
+  return {
+    date,
+    totals,
+    remaining: {
+      calories: user.calorie_target - totals.calories,
+      protein_g: Number(user.protein_target_g) - totals.protein_g,
     },
   };
 }

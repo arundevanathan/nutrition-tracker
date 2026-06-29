@@ -193,11 +193,14 @@ components:
       required:
         - food_entry
         - summary
+        - today
       properties:
         food_entry:
           $ref: "#/components/schemas/FoodEntry"
         summary:
           type: string
+        today:
+          $ref: "#/components/schemas/TodaySnapshot"
 
     CreateWeightEntryRequest:
       type: object
@@ -304,6 +307,28 @@ components:
               type: string
             recent_limit:
               type: integer
+
+    TodaySnapshot:
+      type: object
+      required:
+        - date
+        - totals
+        - remaining
+      properties:
+        date:
+          type: string
+        totals:
+          $ref: "#/components/schemas/DailyTotals"
+        remaining:
+          type: object
+          required:
+            - calories
+            - protein_g
+          properties:
+            calories:
+              type: number
+            protein_g:
+              type: number
 
     FoodEntry:
       type: object
