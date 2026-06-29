@@ -131,7 +131,7 @@ In the Custom GPT Action authentication settings, configure OAuth:
 - Authorization URL: `https://nutrition-tracker.arun-devanathan.workers.dev/oauth/authorize`
 - Token URL: `https://nutrition-tracker.arun-devanathan.workers.dev/oauth/token`
 - Scope: optional for this POC
-- Client ID: value from `OAUTH_ALLOWED_CLIENT_IDS`
+- Client ID: any value provided by ChatGPT is accepted for this POC
 - Client Secret: not used by this POC
 
 Set the OpenAPI server URL to the deployed Worker origin.
@@ -155,7 +155,6 @@ Configure these as Cloudflare Worker variables or secrets:
 - `WORKER_PUBLIC_URL`
 - `SUPABASE_URL`
 - `SUPABASE_SERVICE_ROLE_KEY`
-- `OAUTH_ALLOWED_CLIENT_IDS`
 - `OAUTH_ALLOWED_REDIRECT_URIS`
 - `OAUTH_CODE_TTL_SECONDS`
 - `OAUTH_TOKEN_TTL_SECONDS`
@@ -167,6 +166,7 @@ Do not commit real secrets.
 - The Worker never trusts `user_id` from requests.
 - Authorization codes and access tokens are stored only as hashes.
 - The Supabase service role key is used only server-side by the Worker.
+- OAuth client IDs are intentionally unrestricted for this POC.
 - Redirect URI validation is an exact allowlist match for MVP.
 - OAuth client secrets are not implemented for this POC.
 

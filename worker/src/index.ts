@@ -2,7 +2,6 @@ type Env = {
   WORKER_PUBLIC_URL: string;
   SUPABASE_URL: string;
   SUPABASE_SERVICE_ROLE_KEY: string;
-  OAUTH_ALLOWED_CLIENT_IDS: string;
   OAUTH_ALLOWED_REDIRECT_URIS: string;
   OAUTH_CODE_TTL_SECONDS?: string;
   OAUTH_TOKEN_TTL_SECONDS?: string;
@@ -88,11 +87,6 @@ async function authorize(request: Request, env: Env): Promise<Response> {
   if (responseType !== "code") {
     console.log("oauth_authorize_unsupported_response_type", { response_type: responseType });
     return redirectWithOAuthError(redirectUri, state, "unsupported_response_type");
-  }
-
-  if (!isAllowed(clientId, env.OAUTH_ALLOWED_CLIENT_IDS)) {
-    console.log("oauth_authorize_unauthorized_client", { client_id: clientId });
-    return json({ error: "unauthorized_client" }, 400);
   }
 
   if (!isAllowed(redirectUri, env.OAUTH_ALLOWED_REDIRECT_URIS)) {

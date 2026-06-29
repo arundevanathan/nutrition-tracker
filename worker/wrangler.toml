@@ -20,7 +20,6 @@ head_sampling_rate = 1
 [vars]
 WORKER_PUBLIC_URL = "https://nutrition-tracker.arun-devanathan.workers.dev"
 SUPABASE_URL = "https://mlxgtwochjdbwbuwrknc.supabase.co"
-OAUTH_ALLOWED_CLIENT_IDS = "test-client"
 OAUTH_ALLOWED_REDIRECT_URIS = "https://chat.openai.com/aip/g-0df17a74c50fd210923964645b7b5cc7714ed215/oauth/callback"
 OAUTH_CODE_TTL_SECONDS = "300"
 OAUTH_TOKEN_TTL_SECONDS = "2592000"
