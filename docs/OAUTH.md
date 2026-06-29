@@ -127,7 +127,7 @@ The Worker uses that endpoint as the Supabase PKCE callback, then redirects back
 
 ## Custom GPT Action Configuration
 
-Use `openapi/custom-gpt-action-schema.yaml` as the action schema.
+Use `openai/custom-gpt-action-schema.yaml` as the action schema.
 
 In the Custom GPT Action authentication settings, configure OAuth:
 

@@ -22,7 +22,7 @@ The Custom GPT is the user's primary nutrition interface. It should support natu
 
 ### GPT Actions
 
-GPT Actions expose the product API to the Custom GPT through `openapi/custom-gpt-action-schema.yaml`.
+GPT Actions expose the product API to the Custom GPT through `openai/custom-gpt-action-schema.yaml`.
 
 ### Cloudflare Worker
 

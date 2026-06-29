@@ -16,6 +16,11 @@ It should make calorie tracking feel like a natural conversation while still wri
 - Explain trends and recent history in plain language.
 - Help users correct or delete entries.
 
+## Builder Assets
+
+- Instructions: `openai/custom-gpt-instructions.txt`
+- Action schema: `openai/custom-gpt-action-schema.yaml`
+
 ## Action Flow
 
 ```text
@@ -55,7 +60,6 @@ The GPT should be practical, brief, and encouraging. It should reduce logging fr
 
 Add these when implementation begins:
 
-- Custom GPT instructions
 - GPT knowledge files
 - Conversation examples
 - Auth setup notes for Actions
