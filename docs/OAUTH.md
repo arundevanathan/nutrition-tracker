@@ -35,7 +35,7 @@ Accepts standard OAuth query parameters:
 - `state`
 - `scope`
 
-For MVP, `response_type` must be `code`. The Worker accepts any `client_id` but only allows ChatGPT Action callback redirects matching:
+For MVP, `response_type` must be `code`. The Worker accepts any `client_id`; if ChatGPT sends a blank client id, the Worker normalizes it to an internal default. Redirects are restricted to ChatGPT Action callback URLs matching:
 
 ```text
 https://chat.openai.com/aip/g-*/oauth/callback
@@ -132,7 +132,7 @@ In the Custom GPT Action authentication settings, configure OAuth:
 - Authorization URL: `https://app.calorie-track.com/oauth/authorize`
 - Token URL: `https://app.calorie-track.com/oauth/token`
 - Scope: optional for this MVP
-- Client ID: any value provided by ChatGPT is accepted for this MVP
+- Client ID: any non-secret label is fine for this MVP; blank values are also accepted by the Worker
 - Client Secret: not used by this MVP
 
 Set the OpenAPI server URL to `https://app.calorie-track.com`. Product API paths are exposed under `/api/*`, while OAuth endpoints stay under `/oauth/*`.

@@ -70,6 +70,7 @@ const ENTRY_TYPES = new Set<EntryType>(["Core", "Junk", "Alcohol", "Eating Out"]
 const CONFIDENCE_VALUES = new Set<Confidence>(["high", "medium", "low"]);
 const DASHBOARD_DAYS = 14;
 const RECENT_LIMIT = 10;
+const DEFAULT_OAUTH_CLIENT_ID = "custom-gpt";
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -148,7 +149,7 @@ function normalizeApiPathname(pathname: string): string {
 async function authorize(request: Request, env: Env): Promise<Response> {
   const url = new URL(request.url);
   const responseType = url.searchParams.get("response_type");
-  const clientId = url.searchParams.get("client_id");
+  const clientId = url.searchParams.get("client_id") || DEFAULT_OAUTH_CLIENT_ID;
   const redirectUri = url.searchParams.get("redirect_uri");
   const state = url.searchParams.get("state");
   const scope = url.searchParams.get("scope");
@@ -161,9 +162,9 @@ async function authorize(request: Request, env: Env): Promise<Response> {
     scope,
   });
 
-  if (!responseType || !clientId || !redirectUri) {
+  if (!responseType || !redirectUri) {
     console.log("oauth_authorize_invalid_request");
-    return json({ error: "invalid_request", error_description: "response_type, client_id, and redirect_uri are required" }, 400);
+    return json({ error: "invalid_request", error_description: "response_type and redirect_uri are required" }, 400);
   }
 
   if (responseType !== "code") {
