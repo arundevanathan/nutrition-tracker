@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import type { Session } from "@supabase/supabase-js";
 import {
@@ -369,11 +369,18 @@ function DailyCaloriesChart({
   todayDate: string;
   onSelectDate: (date: string) => void;
 }) {
+  const stripRef = useRef<HTMLDivElement | null>(null);
   const loggedDays = days.filter((day) => day.entries_count > 0);
   const maxCalories = Math.max(1, ...loggedDays.map((day) => day.calories));
 
+  useLayoutEffect(() => {
+    const strip = stripRef.current;
+    if (!strip) return;
+    strip.scrollLeft = strip.scrollWidth;
+  }, [days.length, selectedDate]);
+
   return (
-    <div className="chart-days" style={{ "--day-count": days.length } as CSSProperties}>
+    <div className="chart-days" ref={stripRef} style={{ "--day-count": days.length } as CSSProperties}>
       {days.map((day) => {
         const hasLog = day.entries_count > 0;
         const selected = day.date === selectedDate;
@@ -400,7 +407,8 @@ function DailyCaloriesChart({
 }
 
 function ProteinTrendCard({ days, todayDate }: { days: DashboardData["last_14_days"]["days"]; todayDate: string }) {
-  const maxProtein = Math.max(1, ...days.filter((day) => day.entries_count > 0).map((day) => day.protein_g));
+  const visibleDays = days.slice(-7);
+  const maxProtein = Math.max(1, ...visibleDays.filter((day) => day.entries_count > 0).map((day) => day.protein_g));
 
   return (
     <article className="panel card protein-card">
@@ -408,7 +416,7 @@ function ProteinTrendCard({ days, todayDate }: { days: DashboardData["last_14_da
         <h2>Protein Trend</h2>
       </div>
       <div className="compact-chart">
-        {days.map((day) => {
+        {visibleDays.map((day) => {
           const hasLog = day.entries_count > 0;
           return (
             <div className={`compact-row ${day.date === todayDate ? "today" : ""}`} key={day.date}>
