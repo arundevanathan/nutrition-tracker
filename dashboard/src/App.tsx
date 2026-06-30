@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import type { CSSProperties } from "react";
 import type { Session } from "@supabase/supabase-js";
 import {
   Check,
@@ -269,10 +270,10 @@ function DashboardView({
     <div className="dashboard-grid">
       <div className="left-column">
         <MetricSummary totals={dashboard.today.totals} average={average} />
-        <section className="secondary-grid analytics-grid">
+        <div className="right-analytics">
           <ProteinTrendCard days={trendDays} todayDate={dashboard.today.date} />
           <WeightTrendCard dashboard={dashboard} />
-        </section>
+        </div>
       </div>
 
       <aside className="right-column">
@@ -374,7 +375,7 @@ function DailyCaloriesChart({
   const maxCalories = Math.max(1, ...loggedDays.map((day) => day.calories));
 
   return (
-    <div className="chart-days">
+    <div className="chart-days" style={{ "--day-count": days.length } as CSSProperties}>
       {days.map((day) => {
         const hasLog = day.entries_count > 0;
         const selected = day.date === selectedDate;
