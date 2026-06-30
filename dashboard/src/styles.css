@@ -368,8 +368,8 @@ p {
 
 .day-bar {
   display: grid;
-  grid-template-rows: 116px auto auto;
-  gap: 8px;
+  grid-template-rows: 116px 16px 18px;
+  gap: 6px;
   min-width: 0;
   border: 1px solid transparent;
   border-radius: 8px;
@@ -421,16 +421,15 @@ p {
 .day-bar span,
 .day-bar strong {
   min-width: 0;
-  overflow: hidden;
-  font-size: 12px;
+  font-size: 11px;
   line-height: 1.12;
   text-align: center;
-  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .day-bar strong {
-  font-size: 13px;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
 }
 
 .day-bar.empty strong {

@@ -391,7 +391,7 @@ function DailyCaloriesChart({
             <span className="bar-track">
               {hasLog ? <span className="bar-fill" style={{ height: `${Math.max(10, (day.calories / maxCalories) * 100)}%` }} /> : <span className="bar-empty-dot" />}
             </span>
-            <span>{shortDay(day.date)}</span>
+            <span>{shortDayCompact(day.date)}</span>
             <strong>{hasLog ? day.calories.toLocaleString() : "0"}</strong>
           </button>
         );
@@ -893,6 +893,10 @@ function formatTime(value: string | null): string | null {
 
 function shortDay(date: string): string {
   return new Date(`${date}T00:00:00`).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
+function shortDayCompact(date: string): string {
+  return new Date(`${date}T00:00:00`).toLocaleDateString("en-US", { month: "numeric", day: "numeric" });
 }
 
 function foodCardTitle(date: string, todayDate: string): string {
