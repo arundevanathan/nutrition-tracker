@@ -75,32 +75,33 @@ export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     try {
       const url = new URL(request.url);
+      const routePathname = normalizeApiPathname(url.pathname);
 
-      if (request.method === "GET" && url.pathname === "/health") {
+      if (request.method === "GET" && routePathname === "/health") {
         return json({ ok: true });
       }
 
-      if (request.method === "GET" && url.pathname === "/oauth/authorize") {
+      if (request.method === "GET" && routePathname === "/oauth/authorize") {
         return authorize(request, env);
       }
 
-      if (request.method === "GET" && url.pathname === "/oauth/supabase/callback") {
+      if (request.method === "GET" && routePathname === "/oauth/supabase/callback") {
         return supabaseCallback(request, env);
       }
 
-      if (request.method === "POST" && url.pathname === "/oauth/token") {
+      if (request.method === "POST" && routePathname === "/oauth/token") {
         return token(request, env);
       }
 
-      if (request.method === "GET" && url.pathname === "/me") {
+      if (request.method === "GET" && routePathname === "/me") {
         return me(request, env);
       }
 
-      if (request.method === "POST" && url.pathname === "/food-entry") {
+      if (request.method === "POST" && routePathname === "/food-entry") {
         return createFoodEntry(request, env);
       }
 
-      const foodEntryId = foodEntryIdFromPath(url.pathname);
+      const foodEntryId = foodEntryIdFromPath(routePathname);
       if (foodEntryId && request.method === "PATCH") {
         return updateFoodEntry(request, env, foodEntryId);
       }
@@ -109,11 +110,11 @@ export default {
         return deleteFoodEntry(request, env, foodEntryId);
       }
 
-      if (request.method === "POST" && url.pathname === "/weight-entry") {
+      if (request.method === "POST" && routePathname === "/weight-entry") {
         return createWeightEntry(request, env);
       }
 
-      const weightEntryId = weightEntryIdFromPath(url.pathname);
+      const weightEntryId = weightEntryIdFromPath(routePathname);
       if (weightEntryId && request.method === "PATCH") {
         return updateWeightEntry(request, env, weightEntryId);
       }
@@ -122,11 +123,11 @@ export default {
         return deleteWeightEntry(request, env, weightEntryId);
       }
 
-      if (request.method === "POST" && url.pathname === "/delete-all-data") {
+      if (request.method === "POST" && routePathname === "/delete-all-data") {
         return deleteAllUserData(request, env);
       }
 
-      if (request.method === "GET" && url.pathname === "/dashboard") {
+      if (request.method === "GET" && routePathname === "/dashboard") {
         return dashboard(request, env);
       }
 
@@ -137,6 +138,12 @@ export default {
     }
   },
 };
+
+function normalizeApiPathname(pathname: string): string {
+  if (pathname === "/api") return "/";
+  if (pathname.startsWith("/api/")) return pathname.slice("/api".length);
+  return pathname;
+}
 
 async function authorize(request: Request, env: Env): Promise<Response> {
   const url = new URL(request.url);

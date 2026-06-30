@@ -18,7 +18,7 @@ persist = true
 head_sampling_rate = 1
 
 [vars]
-WORKER_PUBLIC_URL = "https://api.calorie-track.com"
+WORKER_PUBLIC_URL = "https://app.calorie-track.com"
 SUPABASE_URL = "https://mlxgtwochjdbwbuwrknc.supabase.co"
 OAUTH_CODE_TTL_SECONDS = "300"
 OAUTH_TOKEN_TTL_SECONDS = "2592000"

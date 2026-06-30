@@ -4,15 +4,23 @@ Cloudflare Worker API for the nutrition tracker.
 
 ## Current Scope
 
-This folder currently implements only the minimum Custom GPT OAuth proof of concept:
+This folder implements the Custom GPT OAuth flow and the MVP nutrition API surface:
 
 - `GET /health`
 - `GET /oauth/authorize`
 - `GET /oauth/supabase/callback`
 - `POST /oauth/token`
-- `GET /me`
+- `GET /api/me`
+- `GET /api/dashboard`
+- `POST /api/food-entry`
+- `PATCH /api/food-entry/{id}`
+- `DELETE /api/food-entry/{id}`
+- `POST /api/weight-entry`
+- `PATCH /api/weight-entry/{id}`
+- `DELETE /api/weight-entry/{id}`
+- `POST /api/delete-all-data`
 
-It does not implement dashboard routes, nutrition logging, food APIs, or weight APIs yet.
+The Worker also accepts the older top-level product paths without `/api` during the domain transition.
 
 ## Intended Responsibilities
 
@@ -35,8 +43,5 @@ Required configuration is documented in `../docs/OAUTH.md` and `../.env.example`
 
 ## Not Yet Implemented
 
-- Nutrition logging routes
-- Dashboard aggregation routes
-- Food and weight APIs
 - Production OAuth hardening
-- Tests
+- Dedicated automated route tests

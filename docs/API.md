@@ -4,6 +4,8 @@
 
 The Cloudflare Worker is the only backend API layer. Both GPT Actions and the dashboard should call the Worker, not Supabase directly.
 
+The public app hostname is `https://app.calorie-track.com`. GPT-facing product endpoints are exposed under `/api/*`; OAuth endpoints stay under `/oauth/*`.
+
 ## Authentication
 
 MVP auth is Google login via Supabase.
@@ -12,11 +14,11 @@ The Worker verifies authenticated requests with opaque bearer tokens issued by t
 
 ## Minimum API Surface
 
-### `GET /me`
+### `GET /api/me`
 
 Returns the authenticated user's settings and basic setup state.
 
-### `GET /dashboard`
+### `GET /api/dashboard`
 
 Returns dashboard-ready summary data.
 
@@ -28,31 +30,31 @@ Expected content:
 - Recent weight entries
 - Dashboard metadata
 
-### `POST /food-entry`
+### `POST /api/food-entry`
 
 Creates a food entry from GPT or dashboard input.
 
-### `PATCH /food-entry/{id}`
+### `PATCH /api/food-entry/{id}`
 
 Updates a food entry owned by the authenticated user.
 
-### `DELETE /food-entry/{id}`
+### `DELETE /api/food-entry/{id}`
 
 Deletes a food entry owned by the authenticated user.
 
-### `POST /weight-entry`
+### `POST /api/weight-entry`
 
 Creates a weight entry.
 
-### `PATCH /weight-entry/{id}`
+### `PATCH /api/weight-entry/{id}`
 
 Updates a weight entry owned by the authenticated user.
 
-### `DELETE /weight-entry/{id}`
+### `DELETE /api/weight-entry/{id}`
 
 Deletes a weight entry owned by the authenticated user.
 
-### `POST /delete-all-data`
+### `POST /api/delete-all-data`
 
 Deletes all nutrition tracking data owned by the authenticated user after explicit confirmation.
 

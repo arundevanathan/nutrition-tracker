@@ -47,7 +47,7 @@ If the user is not authenticated with Supabase, the Worker stores the original C
 The Worker passes the Supabase auth redirect URL as:
 
 ```text
-https://api.calorie-track.com/oauth/supabase/callback
+https://app.calorie-track.com/oauth/supabase/callback
 ```
 
 After Supabase redirects to that Worker callback, the Worker validates the Supabase code, identifies the Supabase user, creates a short-lived authorization code tied to that user id, and redirects back to the original ChatGPT `redirect_uri` with:
@@ -73,7 +73,7 @@ Returns:
 
 The Worker stores only a SHA-256 hash of the access token. Access tokens expire after 30 days by default.
 
-### `GET /me`
+### `GET /api/me`
 
 Requires:
 
@@ -118,7 +118,7 @@ In Supabase, enable the Google auth provider and configure the Google OAuth clie
 Add the Worker callback URL to Supabase Auth redirect URLs:
 
 ```text
-https://api.calorie-track.com/oauth/supabase/callback
+https://app.calorie-track.com/oauth/supabase/callback
 ```
 
 The Worker uses that endpoint as the Supabase PKCE callback, then redirects back to ChatGPT with the Custom GPT authorization code. Supabase should not redirect to `localhost` for this flow.
@@ -129,24 +129,24 @@ Use `openai/custom-gpt-action-schema.yaml` as the action schema.
 
 In the Custom GPT Action authentication settings, configure OAuth:
 
-- Authorization URL: `https://api.calorie-track.com/oauth/authorize`
-- Token URL: `https://api.calorie-track.com/oauth/token`
+- Authorization URL: `https://app.calorie-track.com/oauth/authorize`
+- Token URL: `https://app.calorie-track.com/oauth/token`
 - Scope: optional for this MVP
 - Client ID: any value provided by ChatGPT is accepted for this MVP
 - Client Secret: not used by this MVP
 
-Set the OpenAPI server URL to the deployed Worker origin.
+Set the OpenAPI server URL to `https://app.calorie-track.com`. Product API paths are exposed under `/api/*`, while OAuth endpoints stay under `/oauth/*`.
 
 ## Expected Test Flow
 
 1. User asks the GPT: `Who am I?`
-2. GPT tries to call `GET /me`.
+2. GPT tries to call `GET /api/me`.
 3. ChatGPT prompts the user to connect their account.
 4. User completes Google login through Supabase.
 5. Supabase redirects to `/oauth/supabase/callback` on the Worker.
 6. The Worker creates an OAuth authorization code and redirects back to ChatGPT.
 7. ChatGPT exchanges the code for an access token.
-8. GPT retries `GET /me`.
+8. GPT retries `GET /api/me`.
 9. GPT displays the authenticated user's details.
 
 ## Environment Variables
