@@ -10,7 +10,12 @@ The public app hostname is `https://app.calorie-track.com`. GPT-facing product e
 
 MVP auth is Google login via Supabase.
 
-The Worker verifies authenticated requests with opaque bearer tokens issued by the Custom GPT OAuth flow before reading or writing user data.
+The Worker accepts two bearer-token forms before reading or writing user data:
+
+- Opaque tokens issued by the Custom GPT OAuth flow.
+- Supabase access tokens issued to the dashboard browser session.
+
+Both auth modes resolve to the same server-side `user_id`; request bodies must never supply ownership.
 
 ## Minimum API Surface
 
@@ -29,6 +34,10 @@ Expected content:
 - Recent food entries
 - Recent weight entries
 - Dashboard metadata
+
+### `GET /api/day?date=YYYY-MM-DD`
+
+Returns one day's totals, food entries, and weight entry for dashboard drilldown.
 
 ### `POST /api/food-entry`
 

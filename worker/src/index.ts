@@ -2,6 +2,7 @@ type Env = {
   WORKER_PUBLIC_URL: string;
   SUPABASE_URL: string;
   SUPABASE_SERVICE_ROLE_KEY: string;
+  DASHBOARD_ALLOWED_ORIGIN?: string;
   OAUTH_CODE_TTL_SECONDS?: string;
   OAUTH_TOKEN_TTL_SECONDS?: string;
 };
@@ -58,6 +59,10 @@ type AuthContext = {
   userId: string;
 };
 
+type SupabaseAuthUser = {
+  id?: string;
+};
+
 type MealType = "breakfast" | "lunch" | "dinner" | "snack" | "drink" | "other";
 type EntryType = "Core" | "Junk" | "Alcohol" | "Eating Out";
 type Confidence = "high" | "medium" | "low";
@@ -78,64 +83,72 @@ export default {
       const url = new URL(request.url);
       const routePathname = normalizeApiPathname(url.pathname);
 
+      if (request.method === "OPTIONS") {
+        return withCors(request, env, new Response(null, { status: 204 }));
+      }
+
       if (request.method === "GET" && routePathname === "/health") {
-        return json({ ok: true });
+        return withCors(request, env, json({ ok: true }));
       }
 
       if (request.method === "GET" && routePathname === "/oauth/authorize") {
-        return authorize(request, env);
+        return withCors(request, env, await authorize(request, env));
       }
 
       if (request.method === "GET" && routePathname === "/oauth/supabase/callback") {
-        return supabaseCallback(request, env);
+        return withCors(request, env, await supabaseCallback(request, env));
       }
 
       if (request.method === "POST" && routePathname === "/oauth/token") {
-        return token(request, env);
+        return withCors(request, env, await token(request, env));
       }
 
       if (request.method === "GET" && routePathname === "/me") {
-        return me(request, env);
+        return withCors(request, env, await me(request, env));
       }
 
       if (request.method === "POST" && routePathname === "/food-entry") {
-        return createFoodEntry(request, env);
+        return withCors(request, env, await createFoodEntry(request, env));
       }
 
       const foodEntryId = foodEntryIdFromPath(routePathname);
       if (foodEntryId && request.method === "PATCH") {
-        return updateFoodEntry(request, env, foodEntryId);
+        return withCors(request, env, await updateFoodEntry(request, env, foodEntryId));
       }
 
       if (foodEntryId && request.method === "DELETE") {
-        return deleteFoodEntry(request, env, foodEntryId);
+        return withCors(request, env, await deleteFoodEntry(request, env, foodEntryId));
       }
 
       if (request.method === "POST" && routePathname === "/weight-entry") {
-        return createWeightEntry(request, env);
+        return withCors(request, env, await createWeightEntry(request, env));
       }
 
       const weightEntryId = weightEntryIdFromPath(routePathname);
       if (weightEntryId && request.method === "PATCH") {
-        return updateWeightEntry(request, env, weightEntryId);
+        return withCors(request, env, await updateWeightEntry(request, env, weightEntryId));
       }
 
       if (weightEntryId && request.method === "DELETE") {
-        return deleteWeightEntry(request, env, weightEntryId);
+        return withCors(request, env, await deleteWeightEntry(request, env, weightEntryId));
       }
 
       if (request.method === "POST" && routePathname === "/delete-all-data") {
-        return deleteAllUserData(request, env);
+        return withCors(request, env, await deleteAllUserData(request, env));
       }
 
       if (request.method === "GET" && routePathname === "/dashboard") {
-        return dashboard(request, env);
+        return withCors(request, env, await dashboard(request, env));
       }
 
-      return json({ error: "not_found" }, 404);
+      if (request.method === "GET" && routePathname === "/day") {
+        return withCors(request, env, await day(request, env));
+      }
+
+      return withCors(request, env, json({ error: "not_found" }, 404));
     } catch (error) {
       console.error(error);
-      return json({ error: "internal_error" }, 500);
+      return withCors(request, env, json({ error: "internal_error" }, 500));
     }
   },
 };
@@ -621,6 +634,44 @@ async function dashboard(request: Request, env: Env): Promise<Response> {
   });
 }
 
+async function day(request: Request, env: Env): Promise<Response> {
+  const auth = await authenticate(request, env);
+  if (auth instanceof Response) return auth;
+
+  const url = new URL(request.url);
+  const date = url.searchParams.get("date");
+
+  if (!date || !isIsoDate(date)) {
+    return validationError({ date: "date query parameter is required and must be YYYY-MM-DD" });
+  }
+
+  const user = await getUser(env, auth.userId);
+  if (!user) return json({ error: "user_not_found" }, 404);
+
+  const [foods, weights] = await Promise.all([
+    supabaseSelect<FoodEntryRow>(
+      env,
+      `food_entries?user_id=eq.${encodeURIComponent(auth.userId)}&consumption_date=eq.${date}&select=*&order=consumption_time.asc.nullslast,logged_at.asc`
+    ),
+    supabaseSelect<WeightEntryRow>(
+      env,
+      `weight_entries?user_id=eq.${encodeURIComponent(auth.userId)}&date=eq.${date}&select=*&order=created_at.desc&limit=1`
+    ),
+  ]);
+
+  return json({
+    user: userResponse(user),
+    date,
+    totals: summarizeFoodEntries(date, foods),
+    food_entries: foods.map(foodEntryResponse),
+    weight_entry: weights[0] ? weightEntryResponse(weights[0]) : null,
+    metadata: {
+      generated_at: new Date().toISOString(),
+      timezone: user.timezone,
+    },
+  });
+}
+
 async function authenticate(request: Request, env: Env): Promise<AuthContext | Response> {
   const tokenValue = bearerToken(request);
 
@@ -628,6 +679,16 @@ async function authenticate(request: Request, env: Env): Promise<AuthContext | R
     return json({ error: "unauthorized" }, 401, { "WWW-Authenticate": "Bearer" });
   }
 
+  const oauthAuth = await authenticateOpaqueToken(tokenValue, env);
+  if (oauthAuth) return oauthAuth;
+
+  const supabaseAuth = await authenticateSupabaseJwt(tokenValue, env);
+  if (supabaseAuth) return supabaseAuth;
+
+  return json({ error: "unauthorized" }, 401, { "WWW-Authenticate": "Bearer" });
+}
+
+async function authenticateOpaqueToken(tokenValue: string, env: Env): Promise<AuthContext | null> {
   const tokenHash = await sha256Hex(tokenValue);
   const tokens = await supabaseSelect<{ user_id: string; expires_at: string; revoked_at: string | null }>(
     env,
@@ -636,10 +697,24 @@ async function authenticate(request: Request, env: Env): Promise<AuthContext | R
   const tokenRow = tokens[0];
 
   if (!tokenRow || tokenRow.revoked_at || new Date(tokenRow.expires_at).getTime() < Date.now()) {
-    return json({ error: "unauthorized" }, 401, { "WWW-Authenticate": "Bearer" });
+    return null;
   }
 
   return { userId: tokenRow.user_id };
+}
+
+async function authenticateSupabaseJwt(tokenValue: string, env: Env): Promise<AuthContext | null> {
+  const response = await fetch(`${trimTrailingSlash(env.SUPABASE_URL)}/auth/v1/user`, {
+    headers: {
+      apikey: env.SUPABASE_SERVICE_ROLE_KEY,
+      Authorization: `Bearer ${tokenValue}`,
+    },
+  });
+
+  if (!response.ok) return null;
+
+  const user = (await response.json()) as SupabaseAuthUser;
+  return user.id ? { userId: user.id } : null;
 }
 
 async function getUser(env: Env, userId: string): Promise<UserRow | null> {
@@ -1288,6 +1363,31 @@ function json(body: unknown, status = 200, headers: Record<string, string> = {})
       "Content-Type": "application/json",
       ...headers,
     },
+  });
+}
+
+function withCors(request: Request, env: Env, response: Response): Response {
+  const origin = request.headers.get("origin");
+  const allowedOrigins = new Set([
+    trimTrailingSlash(env.WORKER_PUBLIC_URL),
+    trimTrailingSlash(env.DASHBOARD_ALLOWED_ORIGIN ?? ""),
+    "http://localhost:5173",
+  ]);
+
+  if (!origin || !allowedOrigins.has(origin)) {
+    return response;
+  }
+
+  const headers = new Headers(response.headers);
+  headers.set("Access-Control-Allow-Origin", origin);
+  headers.set("Access-Control-Allow-Methods", "GET,POST,PATCH,DELETE,OPTIONS");
+  headers.set("Access-Control-Allow-Headers", "Authorization,Content-Type");
+  headers.set("Vary", "Origin");
+
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
   });
 }
 
