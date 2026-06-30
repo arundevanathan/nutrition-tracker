@@ -10,6 +10,14 @@
   box-sizing: border-box;
 }
 
+html,
+body,
+#root {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
 body {
   margin: 0;
   min-width: 320px;
@@ -35,8 +43,11 @@ button:disabled {
 }
 
 .app-shell {
+  width: 100%;
+  max-width: 100vw;
   min-height: 100vh;
   padding: 18px 16px 92px;
+  overflow-x: hidden;
 }
 
 .topbar {
@@ -44,6 +55,7 @@ button:disabled {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
+  width: 100%;
   max-width: 980px;
   margin: 0 auto 18px;
 }
@@ -71,7 +83,9 @@ button:disabled {
 .content {
   display: grid;
   gap: 14px;
+  width: 100%;
   max-width: 980px;
+  min-width: 0;
   margin: 0 auto;
 }
 
@@ -79,11 +93,14 @@ button:disabled {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
+  min-width: 0;
 }
 
 .summary-tile,
 .panel,
 .metric-list {
+  min-width: 0;
+  max-width: 100%;
   border: 1px solid #dce5df;
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.9);
@@ -147,9 +164,13 @@ button:disabled {
   grid-auto-flow: column;
   grid-auto-columns: minmax(52px, 1fr);
   gap: 8px;
+  width: 100%;
+  min-width: 0;
   overflow-x: auto;
+  overflow-y: hidden;
   padding-bottom: 2px;
   scroll-behavior: smooth;
+  overscroll-behavior-inline: contain;
 }
 
 .day-bar {
@@ -220,11 +241,12 @@ button:disabled {
 .food-list {
   display: grid;
   gap: 8px;
+  min-width: 0;
 }
 
 .food-row {
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 10px;
   align-items: center;
   padding: 12px 0;
@@ -247,6 +269,7 @@ button:disabled {
   color: #17211c;
   background: transparent;
   font-weight: 750;
+  overflow-wrap: anywhere;
   text-align: left;
 }
 
@@ -421,7 +444,9 @@ label textarea {
   bottom: 0;
   z-index: 20;
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  width: 100vw;
+  max-width: 100vw;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 4px;
   border-top: 1px solid #dce5df;
   padding: 8px 10px calc(8px + env(safe-area-inset-bottom));
@@ -430,6 +455,7 @@ label textarea {
 }
 
 .bottom-nav button {
+  min-width: 0;
   min-height: 54px;
   border: 0;
   color: #60756a;
@@ -442,6 +468,12 @@ label textarea {
 .bottom-nav button.active {
   color: #176c42;
   background: #eef8f2;
+}
+
+.bottom-nav span {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .sheet-backdrop {
@@ -603,6 +635,7 @@ label textarea {
     left: 24px;
     right: auto;
     width: 170px;
+    max-width: 170px;
     grid-template-columns: 1fr;
     border: 1px solid #dce5df;
     border-radius: 8px;
@@ -684,8 +717,7 @@ label textarea {
 
   .day-strip {
     grid-auto-columns: minmax(58px, 64px);
-    margin-right: -13px;
-    padding-right: 13px;
+    padding-right: 4px;
   }
 
   .day-bar {
