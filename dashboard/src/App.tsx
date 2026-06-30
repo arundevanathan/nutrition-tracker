@@ -41,6 +41,16 @@ const mealTypes: MealType[] = ["breakfast", "lunch", "dinner", "snack", "drink",
 const entryTypes: EntryType[] = ["Core", "Junk", "Alcohol", "Eating Out"];
 
 export default function App() {
+  const publicPage = publicPageForPath(window.location.pathname);
+
+  if (publicPage === "privacy") {
+    return <PrivacyPage />;
+  }
+
+  if (publicPage === "terms") {
+    return <TermsPage />;
+  }
+
   const [session, setSession] = useState<Session | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [view, setView] = useState<View>("today");
@@ -812,6 +822,89 @@ function LoginScreen({ error, onSignIn }: { error: string | null; onSignIn: () =
   );
 }
 
+function PrivacyPage() {
+  return (
+    <main className="legal-page">
+      <section className="legal-card">
+        <a className="legal-home" href="/">
+          Easy Calorie Tracker
+        </a>
+        <h1>Privacy Policy</h1>
+        <p className="legal-date">Last updated: June 30, 2026</p>
+
+        <h2>What We Collect</h2>
+        <p>
+          Easy Calorie Tracker stores nutrition data you choose to log, including food descriptions, calories, macros, meal type,
+          notes, dates, and weight entries. If you sign in with Google, we receive basic account information such as your email
+          address and profile name through Supabase Auth.
+        </p>
+
+        <h2>How We Use Data</h2>
+        <p>
+          We use your data to log food and weight entries, show daily summaries, power dashboard views, and help you review or
+          correct your own nutrition history.
+        </p>
+
+        <h2>Where Data Is Stored</h2>
+        <p>
+          Authentication and app data are stored in Supabase. The API runs on Cloudflare Workers. The dashboard is served through
+          Cloudflare Pages.
+        </p>
+
+        <h2>Data Sharing</h2>
+        <p>
+          We do not sell your data. Data is shared with service providers only as needed to operate the app, such as Supabase,
+          Cloudflare, Google authentication, and OpenAI Custom GPT Actions.
+        </p>
+
+        <h2>Your Controls</h2>
+        <p>
+          You can edit or delete individual food and weight entries. You can also delete all nutrition tracking data from the app
+          after explicit confirmation.
+        </p>
+
+        <h2>Contact</h2>
+        <p>For privacy questions, contact the app owner directly.</p>
+      </section>
+    </main>
+  );
+}
+
+function TermsPage() {
+  return (
+    <main className="legal-page">
+      <section className="legal-card">
+        <a className="legal-home" href="/">
+          Easy Calorie Tracker
+        </a>
+        <h1>Terms of Service</h1>
+        <p className="legal-date">Last updated: June 30, 2026</p>
+
+        <h2>Use Of The App</h2>
+        <p>
+          Easy Calorie Tracker is a personal nutrition logging tool. You are responsible for reviewing estimates and deciding what
+          to save.
+        </p>
+
+        <h2>Nutrition Estimates</h2>
+        <p>
+          Calorie and macro estimates are approximate and may be wrong. The app is not medical, nutritional, or fitness advice.
+        </p>
+
+        <h2>Your Data</h2>
+        <p>
+          You control your food and weight entries. Deleting all data is irreversible once confirmed.
+        </p>
+
+        <h2>Availability</h2>
+        <p>
+          The app is provided as-is and may change, pause, or stop during active development.
+        </p>
+      </section>
+    </main>
+  );
+}
+
 function SetupMissing() {
   return (
     <main className="login-screen">
@@ -903,6 +996,12 @@ function signed(value: number): string {
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : "Something went wrong";
+}
+
+function publicPageForPath(pathname: string): "privacy" | "terms" | null {
+  if (pathname === "/privacy") return "privacy";
+  if (pathname === "/terms") return "terms";
+  return null;
 }
 
 function sessionFromHash(): { access_token: string; refresh_token: string } | null {
