@@ -5,7 +5,7 @@ info:
   description: MVP Custom GPT Actions for authenticated nutrition logging and dashboard retrieval.
 
 servers:
-  - url: https://nutrition-tracker.arun-devanathan.workers.dev
+  - url: https://api.calorie-track.com
 
 paths:
   /me:
@@ -852,6 +852,6 @@ components:
       type: oauth2
       flows:
         authorizationCode:
-          authorizationUrl: https://nutrition-tracker.arun-devanathan.workers.dev/oauth/authorize
-          tokenUrl: https://nutrition-tracker.arun-devanathan.workers.dev/oauth/token
+          authorizationUrl: https://api.calorie-track.com/oauth/authorize
+          tokenUrl: https://api.calorie-track.com/oauth/token
           scopes: {}
