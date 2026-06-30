@@ -188,11 +188,11 @@ p {
 
 .dashboard-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.08fr) minmax(360px, 0.92fr);
+  grid-template-columns: 1fr;
   grid-template-areas:
-    "summary summary"
-    "daily analytics"
-    "food food";
+    "summary"
+    "analytics"
+    "food";
   gap: 16px;
   align-items: start;
 }
@@ -200,7 +200,7 @@ p {
 .left-column,
 .right-column,
 .secondary-grid,
-.right-analytics {
+.analytics-grid {
   display: grid;
   gap: 16px;
   align-content: start;
@@ -214,20 +214,14 @@ p {
   }
 }
 
-.secondary-grid,
-.right-analytics {
+.analytics-grid {
   grid-area: analytics;
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr) minmax(0, 1fr);
   align-self: stretch;
 }
 
-.right-analytics > .panel,
-.daily-calories-card {
-  height: 100%;
-}
-
-.daily-calories-card {
-  grid-area: daily;
+.analytics-grid > .panel {
+  min-height: 100%;
 }
 
 .food-card {
@@ -365,10 +359,10 @@ p {
 
 .chart-days {
   display: grid;
-  grid-template-columns: repeat(var(--day-count, 6), minmax(76px, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(var(--day-count, 6), minmax(0, 1fr));
+  gap: 8px;
   align-items: end;
-  overflow-x: auto;
+  overflow-x: visible;
   padding-bottom: 2px;
 }
 
@@ -922,14 +916,13 @@ label textarea {
 
   .dashboard-grid,
   .secondary-grid,
-  .right-analytics {
+  .analytics-grid {
     grid-template-columns: 1fr;
   }
 
   .dashboard-grid {
     grid-template-areas:
       "summary"
-      "daily"
       "analytics"
       "food";
   }
