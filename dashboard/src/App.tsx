@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import {
   Activity,
@@ -548,24 +548,42 @@ function DayStrip({
   selectedDate: string;
   onSelectDate: (date: string) => void;
 }) {
-  const maxCalories = Math.max(1, ...days.map((day) => day.calories));
+  const stripRef = useRef<HTMLDivElement | null>(null);
+  const loggedDays = days.filter((day) => day.entries_count > 0);
+  const maxCalories = Math.max(1, ...loggedDays.map((day) => day.calories));
+
+  useEffect(() => {
+    const strip = stripRef.current;
+    if (!strip) return;
+    strip.scrollLeft = strip.scrollWidth;
+  }, [days.length, selectedDate]);
 
   return (
-    <div className="day-strip">
-      {days.map((day) => (
-        <button
-          className={`day-bar ${day.date === selectedDate ? "selected" : ""}`}
-          type="button"
-          key={day.date}
-          onClick={() => onSelectDate(day.date)}
-        >
-          <span className="bar-track">
-            <span className="bar-fill" style={{ height: `${Math.max(6, (day.calories / maxCalories) * 100)}%` }} />
-          </span>
-          <span>{shortDay(day.date)}</span>
-          <strong>{day.entries_count > 0 ? day.calories : "-"}</strong>
-        </button>
-      ))}
+    <div className="day-strip" ref={stripRef}>
+      {days.map((day) => {
+        const hasLog = day.entries_count > 0;
+        const selected = day.date === selectedDate;
+
+        return (
+          <button
+            className={`day-bar ${selected ? "selected" : ""} ${hasLog ? "" : "empty"}`}
+            type="button"
+            key={day.date}
+            onClick={() => onSelectDate(day.date)}
+            aria-label={`${shortDay(day.date)}: ${hasLog ? `${day.calories} calories logged` : "no food logged"}`}
+          >
+            <span className="bar-track">
+              {hasLog ? (
+                <span className="bar-fill" style={{ height: `${Math.max(10, (day.calories / maxCalories) * 100)}%` }} />
+              ) : (
+                <span className="bar-empty-dot" />
+              )}
+            </span>
+            <span>{shortDay(day.date)}</span>
+            <strong>{hasLog ? day.calories : "No log"}</strong>
+          </button>
+        );
+      })}
     </div>
   );
 }

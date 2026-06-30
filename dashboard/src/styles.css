@@ -149,6 +149,7 @@ button:disabled {
   gap: 8px;
   overflow-x: auto;
   padding-bottom: 2px;
+  scroll-behavior: smooth;
 }
 
 .day-bar {
@@ -168,6 +169,17 @@ button:disabled {
   background: #eff8f2;
 }
 
+.day-bar.empty {
+  color: #84968c;
+  background: #fbfdfb;
+}
+
+.day-bar.empty strong {
+  color: #84968c;
+  font-size: 11px;
+  font-weight: 700;
+}
+
 .bar-track {
   display: flex;
   align-items: end;
@@ -179,11 +191,24 @@ button:disabled {
   overflow: hidden;
 }
 
+.day-bar.empty .bar-track {
+  align-items: center;
+  border: 1px dashed #d8e2dc;
+  background: transparent;
+}
+
 .bar-fill {
   display: block;
   width: 100%;
   border-radius: 6px 6px 0 0;
   background: #2f8a5b;
+}
+
+.bar-empty-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #c8d5ce;
 }
 
 .day-bar span,
@@ -609,5 +634,99 @@ label textarea {
 
   .form-grid.four {
     grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 520px) {
+  .app-shell {
+    padding: 14px 12px 88px;
+  }
+
+  .topbar {
+    margin-bottom: 14px;
+  }
+
+  .topbar h1 {
+    font-size: 24px;
+  }
+
+  .summary-grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .summary-tile {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    align-items: baseline;
+    gap: 6px;
+    min-height: auto;
+    padding: 13px 14px;
+  }
+
+  .summary-tile strong {
+    margin: 0;
+    font-size: 25px;
+    text-align: right;
+  }
+
+  .summary-tile small {
+    text-align: right;
+  }
+
+  .panel {
+    padding: 13px;
+  }
+
+  .panel-header {
+    align-items: flex-start;
+  }
+
+  .day-strip {
+    grid-auto-columns: minmax(58px, 64px);
+    margin-right: -13px;
+    padding-right: 13px;
+  }
+
+  .day-bar {
+    grid-template-rows: 74px auto auto;
+    min-width: 58px;
+    padding: 7px 5px;
+  }
+
+  .bar-track {
+    min-height: 74px;
+  }
+
+  .food-row {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .food-macros {
+    text-align: left;
+  }
+
+  .row-actions {
+    justify-content: flex-start;
+  }
+
+  .form-grid.two,
+  .form-grid.four {
+    grid-template-columns: 1fr;
+  }
+
+  .button-row {
+    display: grid;
+  }
+
+  .legal-card,
+  .login-panel {
+    padding: 18px;
+  }
+
+  .legal-card h1,
+  .login-panel h1 {
+    font-size: 28px;
   }
 }
