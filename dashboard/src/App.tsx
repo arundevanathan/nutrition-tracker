@@ -269,21 +269,21 @@ function DashboardView({
     <div className="dashboard-grid">
       <div className="left-column">
         <MetricSummary totals={dashboard.today.totals} average={average} />
-        <section className="secondary-grid">
+        <section className="secondary-grid analytics-grid">
           <ProteinTrendCard days={trendDays} todayDate={dashboard.today.date} />
           <WeightTrendCard dashboard={dashboard} />
         </section>
       </div>
 
       <aside className="right-column">
-        <section className="panel card">
+        <section className="panel card daily-calories-card">
           <div className="panel-header">
             <h2>Daily Calories</h2>
           </div>
           <DailyCaloriesChart days={trendDays} selectedDate={selectedDate} todayDate={dashboard.today.date} onSelectDate={onSelectDate} />
         </section>
 
-        <section className="panel card">
+        <section className="panel card food-card">
           <div className="panel-header">
             <h2>{foodCardTitle(selectedDate, dashboard.today.date)}</h2>
             <button className="add-button" type="button" onClick={() => onAddFood(selectedDate)} aria-label="Add food" title="Add food">

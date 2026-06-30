@@ -188,7 +188,11 @@ p {
 
 .dashboard-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.08fr) minmax(350px, 0.92fr);
+  grid-template-columns: minmax(0, 1.08fr) minmax(360px, 0.92fr);
+  grid-template-areas:
+    "summary summary"
+    "analytics daily"
+    "food food";
   gap: 16px;
   align-items: start;
 }
@@ -202,8 +206,30 @@ p {
   min-width: 0;
 }
 
+@media (min-width: 1081px) {
+  .left-column,
+  .right-column {
+    display: contents;
+  }
+}
+
 .secondary-grid {
+  grid-area: analytics;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-self: stretch;
+}
+
+.secondary-grid > .panel,
+.daily-calories-card {
+  height: 100%;
+}
+
+.daily-calories-card {
+  grid-area: daily;
+}
+
+.food-card {
+  grid-area: food;
 }
 
 .card,
@@ -231,12 +257,15 @@ p {
 .panel-header h2 {
   font-size: 19px;
   line-height: 1.15;
+  white-space: nowrap;
 }
 
 .macro-grid {
+  grid-area: summary;
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(320px, 1fr) minmax(360px, 1.12fr);
   gap: 10px;
+  align-items: stretch;
 }
 
 .macro-row {
@@ -264,6 +293,7 @@ p {
 
 .metric-card.calorie-hero {
   min-height: 92px;
+  height: 100%;
 }
 
 .metric-card.compact-macro {
@@ -333,7 +363,7 @@ p {
 
 .chart-days {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(78px, 1fr));
   gap: 10px;
   align-items: end;
 }
@@ -888,6 +918,18 @@ label textarea {
 
   .dashboard-grid,
   .secondary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-grid {
+    grid-template-areas:
+      "summary"
+      "analytics"
+      "daily"
+      "food";
+  }
+
+  .macro-grid {
     grid-template-columns: 1fr;
   }
 }
