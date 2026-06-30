@@ -268,35 +268,34 @@ function DashboardView({
 
   return (
     <div className="dashboard-grid">
-      <div className="left-column">
-        <MetricSummary totals={dashboard.today.totals} average={average} />
-        <section className="analytics-grid">
-          <section className="panel card daily-calories-card">
-            <div className="panel-header">
-              <h2>Daily Calories</h2>
-            </div>
-            <DailyCaloriesChart days={trendDays} selectedDate={selectedDate} todayDate={dashboard.today.date} onSelectDate={onSelectDate} />
-          </section>
-          <ProteinTrendCard days={trendDays} todayDate={dashboard.today.date} />
-          <WeightTrendCard dashboard={dashboard} />
-        </section>
-      </div>
+      <MetricSummary totals={dashboard.today.totals} average={average} />
 
-      <aside className="right-column">
-        <section className="panel card food-card">
-          <div className="panel-header">
-            <h2>{foodCardTitle(selectedDate, dashboard.today.date)}</h2>
-            <button className="add-button" type="button" onClick={() => onAddFood(selectedDate)} aria-label="Add food" title="Add food">
-              <Plus size={18} />
-            </button>
+      <section className="panel card daily-calories-card">
+        <div className="panel-header">
+          <div>
+            <h2>Daily Calories</h2>
+            <p>Select a day to view detailed entries</p>
           </div>
-          <FoodList
-            entries={selectedEntries}
-            onEdit={onEditFood}
-            emptyText={selectedIsLoading ? "Loading food entries..." : "No food logged for this day."}
-          />
-        </section>
-      </aside>
+        </div>
+        <DailyCaloriesChart days={trendDays} selectedDate={selectedDate} todayDate={dashboard.today.date} onSelectDate={onSelectDate} />
+      </section>
+
+      <ProteinTrendCard days={trendDays} todayDate={dashboard.today.date} />
+      <WeightTrendCard dashboard={dashboard} />
+
+      <section className="panel card food-card">
+        <div className="panel-header">
+          <h2>{foodCardTitle(selectedDate, dashboard.today.date)}</h2>
+          <button className="add-button" type="button" onClick={() => onAddFood(selectedDate)} aria-label="Add food" title="Add food">
+            <Plus size={18} />
+          </button>
+        </div>
+        <FoodList
+          entries={selectedEntries}
+          onEdit={onEditFood}
+          emptyText={selectedIsLoading ? "Loading food entries..." : "No food logged for this day."}
+        />
+      </section>
     </div>
   );
 }
@@ -404,7 +403,7 @@ function ProteinTrendCard({ days, todayDate }: { days: DashboardData["last_14_da
   const maxProtein = Math.max(1, ...days.filter((day) => day.entries_count > 0).map((day) => day.protein_g));
 
   return (
-    <article className="panel card">
+    <article className="panel card protein-card">
       <div className="panel-header">
         <h2>Protein Trend</h2>
       </div>
@@ -431,7 +430,7 @@ function WeightTrendCard({ dashboard }: { dashboard: DashboardData }) {
 
   if (entries.length === 0) {
     return (
-      <article className="panel card">
+      <article className="panel card weight-card">
         <div className="panel-header">
           <h2>Weight Trend</h2>
         </div>
@@ -442,7 +441,7 @@ function WeightTrendCard({ dashboard }: { dashboard: DashboardData }) {
 
   if (entries.length === 1) {
     return (
-      <article className="panel card weight-latest-card">
+      <article className="panel card weight-card weight-latest-card">
         <div>
           <h2>Weight Trend</h2>
           <p className="muted">Latest entry</p>
@@ -467,7 +466,7 @@ function WeightTrendCard({ dashboard }: { dashboard: DashboardData }) {
   const delta = entries[entries.length - 1].weight_kg - entries[0].weight_kg;
 
   return (
-    <article className="panel card">
+    <article className="panel card weight-card">
       <div className="panel-header">
         <h2>Weight Trend</h2>
       </div>

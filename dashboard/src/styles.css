@@ -188,44 +188,29 @@ p {
 
 .dashboard-grid {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr) minmax(0, 1fr);
   grid-template-areas:
-    "summary"
-    "analytics"
-    "food";
+    "summary summary summary"
+    "daily protein weight"
+    "food food food";
   gap: 16px;
   align-items: start;
 }
 
-.left-column,
-.right-column,
-.secondary-grid,
-.analytics-grid {
-  display: grid;
-  gap: 16px;
-  align-content: start;
-  min-width: 0;
-}
-
-@media (min-width: 1081px) {
-  .left-column,
-  .right-column {
-    display: contents;
-  }
-}
-
-.analytics-grid {
-  grid-area: analytics;
-  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr) minmax(0, 1fr);
-  align-self: stretch;
-}
-
-.analytics-grid > .panel {
-  min-height: 100%;
-}
-
 .food-card {
   grid-area: food;
+}
+
+.daily-calories-card {
+  grid-area: daily;
+}
+
+.protein-card {
+  grid-area: protein;
+}
+
+.weight-card {
+  grid-area: weight;
 }
 
 .card,
@@ -254,6 +239,12 @@ p {
   font-size: 19px;
   line-height: 1.15;
   white-space: nowrap;
+}
+
+.panel-header p {
+  margin-top: 4px;
+  color: #687970;
+  font-size: 13px;
 }
 
 .macro-grid {
@@ -913,16 +904,16 @@ label textarea {
     padding-top: 14px;
   }
 
-  .dashboard-grid,
-  .secondary-grid,
-  .analytics-grid {
+  .dashboard-grid {
     grid-template-columns: 1fr;
   }
 
   .dashboard-grid {
     grid-template-areas:
       "summary"
-      "analytics"
+      "protein"
+      "weight"
+      "daily"
       "food";
   }
 
@@ -992,7 +983,7 @@ label textarea {
   }
 
   .chart-days {
-    grid-template-columns: repeat(6, minmax(56px, 1fr));
+    grid-template-columns: repeat(var(--day-count, 6), minmax(56px, 1fr));
     overflow-x: auto;
     padding-bottom: 2px;
   }
