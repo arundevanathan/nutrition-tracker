@@ -1,36 +1,24 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import {
-  Activity,
-  CalendarDays,
   Check,
-  ChevronLeft,
   Edit3,
-  LineChart,
-  List,
   LogOut,
   Plus,
   RefreshCw,
-  Settings,
   Trash2,
-  Utensils,
-  Weight,
 } from "lucide-react";
 import {
   createFoodEntry,
-  createWeightEntry,
-  deleteAllData,
   deleteFoodEntry,
-  deleteWeightEntry,
   getDashboard,
   getDay,
   updateFoodEntry,
-  updateWeightEntry,
 } from "./api";
 import { getSupabaseClient, hasSupabaseConfig } from "./supabase";
-import type { DashboardData, DayData, EntryType, FoodEntry, FoodEntryInput, MealType, WeightEntryInput } from "./types";
+import type { DashboardData, DayData, EntryType, FoodEntry, FoodEntryInput, MealType } from "./types";
+import logoUrl from "./assets/logo.png";
 
-type View = "today" | "trends" | "entries" | "settings";
 type FoodFormState = {
   mode: "create" | "edit";
   entry?: FoodEntry;
@@ -39,6 +27,7 @@ type FoodFormState = {
 
 const mealTypes: MealType[] = ["breakfast", "lunch", "dinner", "snack", "drink", "other"];
 const entryTypes: EntryType[] = ["Core", "Junk", "Alcohol", "Eating Out"];
+const contactEmail = "arun.devanathan@gmail.com";
 
 export default function App() {
   const publicPage = publicPageForPath(window.location.pathname);
@@ -53,18 +42,16 @@ export default function App() {
 
   const [session, setSession] = useState<Session | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
-  const [view, setView] = useState<View>("today");
   const [dashboard, setDashboard] = useState<DashboardData | null>(null);
   const [dayData, setDayData] = useState<DayData | null>(null);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [foodForm, setFoodForm] = useState<FoodFormState | null>(null);
-  const [weightSaving, setWeightSaving] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const supabase = useMemo(() => (hasSupabaseConfig() ? getSupabaseClient() : null), []);
   const token = session?.access_token ?? null;
-  const selectedDay = selectedDate ? dayData : null;
+  const selectedDay = selectedDate && selectedDate !== dashboard?.today.date && dayData?.date === selectedDate ? dayData : null;
 
   useEffect(() => {
     if (!hasSupabaseConfig()) {
@@ -116,9 +103,9 @@ export default function App() {
   }, [token]);
 
   useEffect(() => {
-    if (!token || !selectedDate) return;
+    if (!token || !selectedDate || selectedDate === dashboard?.today.date) return;
     void loadDay(token, selectedDate);
-  }, [token, selectedDate]);
+  }, [token, selectedDate, dashboard?.today.date]);
 
   async function loadDashboard(accessToken = token) {
     if (!accessToken) return;
@@ -176,56 +163,16 @@ export default function App() {
     }
   }
 
-  async function removeFood(entry: FoodEntry) {
-    if (!token || !window.confirm(`Delete ${entry.description}?`)) return;
+  async function removeFood(entry: FoodEntry): Promise<boolean> {
+    if (!token || !window.confirm(`Delete ${entry.description}?`)) return false;
     setError(null);
     try {
       await deleteFoodEntry(token, entry.id);
       await loadDashboard(token);
+      return true;
     } catch (err) {
       setError(errorMessage(err));
-    }
-  }
-
-  async function saveWeight(values: WeightEntryInput, existingId?: string) {
-    if (!token) return;
-    setWeightSaving(true);
-    setError(null);
-    try {
-      if (existingId) await updateWeightEntry(token, existingId, values);
-      else await createWeightEntry(token, values);
-      await loadDashboard(token);
-    } catch (err) {
-      setError(errorMessage(err));
-    } finally {
-      setWeightSaving(false);
-    }
-  }
-
-  async function removeWeight(id: string) {
-    if (!token || !window.confirm("Delete this weight entry?")) return;
-    setWeightSaving(true);
-    setError(null);
-    try {
-      await deleteWeightEntry(token, id);
-      await loadDashboard(token);
-    } catch (err) {
-      setError(errorMessage(err));
-    } finally {
-      setWeightSaving(false);
-    }
-  }
-
-  async function removeAllData(confirmation: string) {
-    if (!token) return;
-    setError(null);
-    try {
-      await deleteAllData(token, confirmation);
-      setSelectedDate(null);
-      setDayData(null);
-      await loadDashboard(token);
-    } catch (err) {
-      setError(errorMessage(err));
+      return false;
     }
   }
 
@@ -244,13 +191,22 @@ export default function App() {
   return (
     <div className="app-shell">
       <header className="topbar">
-        <div>
-          <p className="eyebrow">Easy Calorie Tracker</p>
-          <h1>{selectedDay ? formatFullDate(selectedDay.date) : titleForView(view)}</h1>
+        <div className="brand">
+          <img className="brand-logo" src={logoUrl} alt="Easy Calorie Tracker logo" />
+          <div>
+            <p className="eyebrow">Easy Calorie Tracker</p>
+            <h1>{dashboard?.user.display_name ? `${firstName(dashboard.user.display_name)}'s Dashboard` : "Your Dashboard"}</h1>
+            <p className="header-email">{dashboard?.user.email ?? session.user.email}</p>
+          </div>
         </div>
-        <button className="icon-button" type="button" onClick={() => loadDashboard()} aria-label="Refresh dashboard">
-          <RefreshCw size={19} className={refreshing ? "spin" : ""} />
-        </button>
+        <div className="header-actions">
+          <button className="header-action" type="button" onClick={() => loadDashboard()} aria-label="Refresh" title="Refresh">
+            <RefreshCw size={19} className={refreshing ? "spin" : ""} />
+          </button>
+          <button className="header-action" type="button" onClick={signOut} aria-label="Log out" title="Log out">
+            <LogOut size={19} />
+          </button>
+        </div>
       </header>
 
       {error ? <div className="error-banner">{error}</div> : null}
@@ -258,329 +214,185 @@ export default function App() {
       <main className="content">
         {!dashboard ? (
           <ShellLoading />
-        ) : selectedDay ? (
-          <DayDrilldown
-            day={selectedDay}
-            onBack={() => setSelectedDate(null)}
-            onAddFood={() => setFoodForm(newFoodForm(selectedDay.date))}
-            onEditFood={(entry) => setFoodForm(editFoodForm(entry))}
-            onDeleteFood={removeFood}
-            onSaveWeight={saveWeight}
-            onDeleteWeight={removeWeight}
-            weightSaving={weightSaving}
-          />
-        ) : view === "today" ? (
-          <TodayView
-            dashboard={dashboard}
-            onSelectDate={setSelectedDate}
-            onAddFood={() => setFoodForm(newFoodForm(dashboard.today.date))}
-            onEditFood={(entry) => setFoodForm(editFoodForm(entry))}
-            onDeleteFood={removeFood}
-          />
-        ) : view === "trends" ? (
-          <TrendsView dashboard={dashboard} onSelectDate={setSelectedDate} />
-        ) : view === "entries" ? (
-          <EntriesView
-            entries={dashboard.recent_food_entries}
-            onSelectDate={setSelectedDate}
-            onEditFood={(entry) => setFoodForm(editFoodForm(entry))}
-            onDeleteFood={removeFood}
-          />
         ) : (
-          <SettingsView dashboard={dashboard} onSignOut={signOut} onDeleteAllData={removeAllData} />
+          <DashboardView
+            dashboard={dashboard}
+            selectedDate={selectedDate ?? dashboard.today.date}
+            selectedDay={selectedDay}
+            onSelectDate={(date) => setSelectedDate(date)}
+            onAddFood={(date) => setFoodForm(newFoodForm(date))}
+            onEditFood={(entry) => setFoodForm(editFoodForm(entry))}
+          />
         )}
       </main>
-
-      {!selectedDay ? <BottomNav view={view} onChange={setView} /> : null}
 
       {foodForm ? (
         <FoodEntrySheet
           form={foodForm}
           onClose={() => setFoodForm(null)}
           onSave={(values) => saveFood(values, foodForm.entry)}
+          onDelete={
+            foodForm.entry
+              ? async () => {
+                  if (await removeFood(foodForm.entry!)) setFoodForm(null);
+                }
+              : undefined
+          }
         />
       ) : null}
+      <AppFooter />
     </div>
   );
 }
 
-function TodayView({
+function DashboardView({
   dashboard,
+  selectedDate,
+  selectedDay,
   onSelectDate,
   onAddFood,
   onEditFood,
-  onDeleteFood,
 }: {
   dashboard: DashboardData;
+  selectedDate: string;
+  selectedDay: DayData | null;
   onSelectDate: (date: string) => void;
-  onAddFood: () => void;
+  onAddFood: (date: string) => void;
   onEditFood: (entry: FoodEntry) => void;
-  onDeleteFood: (entry: FoodEntry) => void;
 }) {
-  return (
-    <>
-      <SummaryGrid totals={dashboard.today.totals} />
-      <section className="panel">
-        <div className="panel-header">
-          <div>
-            <h2>Last 14 Days</h2>
-            <p>{dashboard.last_14_days.averages.calories} kcal avg on logged days</p>
-          </div>
-        </div>
-        <DayStrip days={dashboard.last_14_days.days} selectedDate={dashboard.today.date} onSelectDate={onSelectDate} />
-      </section>
-      <section className="panel">
-        <div className="panel-header">
-          <div>
-            <h2>Today</h2>
-            <p>{dashboard.today.food_entries.length} food entries</p>
-          </div>
-          <button className="primary-button compact" type="button" onClick={onAddFood}>
-            <Plus size={17} /> Add
-          </button>
-        </div>
-        <FoodList entries={dashboard.today.food_entries} onEdit={onEditFood} onDelete={onDeleteFood} emptyText="No food logged today." />
-      </section>
-      <section className="panel">
-        <div className="panel-header">
-          <div>
-            <h2>Weight</h2>
-            <p>{dashboard.today.latest_weight ? `${dashboard.today.latest_weight.weight_kg} kg latest` : "No weight logged yet"}</p>
-          </div>
-          <Weight size={19} />
-        </div>
-      </section>
-    </>
-  );
-}
-
-function DayDrilldown({
-  day,
-  onBack,
-  onAddFood,
-  onEditFood,
-  onDeleteFood,
-  onSaveWeight,
-  onDeleteWeight,
-  weightSaving,
-}: {
-  day: DayData;
-  onBack: () => void;
-  onAddFood: () => void;
-  onEditFood: (entry: FoodEntry) => void;
-  onDeleteFood: (entry: FoodEntry) => void;
-  onSaveWeight: (values: WeightEntryInput, existingId?: string) => void;
-  onDeleteWeight: (id: string) => void;
-  weightSaving: boolean;
-}) {
-  return (
-    <>
-      <button className="text-button" type="button" onClick={onBack}>
-        <ChevronLeft size={18} /> Back
-      </button>
-      <SummaryGrid totals={day.totals} />
-      <section className="panel">
-        <div className="panel-header">
-          <div>
-            <h2>Food Entries</h2>
-            <p>{day.food_entries.length} entries</p>
-          </div>
-          <button className="primary-button compact" type="button" onClick={onAddFood}>
-            <Plus size={17} /> Add
-          </button>
-        </div>
-        <FoodList entries={day.food_entries} onEdit={onEditFood} onDelete={onDeleteFood} emptyText="No food entries for this day." />
-      </section>
-      <WeightPanel day={day} onSave={onSaveWeight} onDelete={onDeleteWeight} saving={weightSaving} />
-    </>
-  );
-}
-
-function TrendsView({ dashboard, onSelectDate }: { dashboard: DashboardData; onSelectDate: (date: string) => void }) {
-  const insights = dashboard.insights;
+  const trendDays = smartTrendDays(dashboard.last_14_days.days);
+  const average = rollingAverage(dashboard.last_14_days.days);
+  const selectedEntries = selectedDate === dashboard.today.date ? dashboard.today.food_entries : selectedDay?.food_entries ?? [];
+  const selectedIsLoading = selectedDate !== dashboard.today.date && !selectedDay;
 
   return (
-    <>
-      <section className="panel">
-        <div className="panel-header">
-          <div>
-            <h2>Logged-Day Average</h2>
-            <p>{insights.days_logged} of 14 days logged</p>
-          </div>
-          <LineChart size={19} />
-        </div>
-        <MacroTable totals={dashboard.last_14_days.averages} />
-      </section>
-      <section className="panel">
-        <div className="panel-header">
-          <div>
-            <h2>Recent Trend</h2>
-            <p>Tap any day to inspect entries</p>
-          </div>
-        </div>
-        <DayStrip days={dashboard.last_14_days.days} selectedDate={dashboard.today.date} onSelectDate={onSelectDate} />
-      </section>
-      <section className="metric-list">
-        <MetricRow label="Avg calories, last 7 logged days" value={`${insights.avg_calories_last_7_days} kcal`} />
-        <MetricRow label="Previous 7 logged days" value={`${insights.avg_calories_previous_7_days} kcal`} />
-        <MetricRow label="Protein trend" value={`${signed(insights.protein_trend_delta)}g`} />
-        <MetricRow label="Weight change" value={insights.weight_delta === null ? "No trend yet" : `${signed(insights.weight_delta)} kg`} />
-      </section>
-    </>
-  );
-}
-
-function EntriesView({
-  entries,
-  onSelectDate,
-  onEditFood,
-  onDeleteFood,
-}: {
-  entries: FoodEntry[];
-  onSelectDate: (date: string) => void;
-  onEditFood: (entry: FoodEntry) => void;
-  onDeleteFood: (entry: FoodEntry) => void;
-}) {
-  const [query, setQuery] = useState("");
-  const filtered = useMemo(
-    () => entries.filter((entry) => entry.description.toLowerCase().includes(query.trim().toLowerCase())),
-    [entries, query]
-  );
-
-  return (
-    <section className="panel">
-      <div className="panel-header">
-        <div>
-          <h2>Recent Entries</h2>
-          <p>{filtered.length} visible</p>
-        </div>
+    <div className="dashboard-grid">
+      <div className="left-column">
+        <MetricSummary totals={dashboard.today.totals} average={average} />
+        <section className="secondary-grid">
+          <ProteinTrendCard days={trendDays} todayDate={dashboard.today.date} />
+          <WeightTrendCard dashboard={dashboard} />
+        </section>
       </div>
-      <input className="search-input" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search foods" />
-      <FoodList
-        entries={filtered}
-        onEdit={onEditFood}
-        onDelete={onDeleteFood}
-        onDateClick={(date) => onSelectDate(date)}
-        emptyText="No matching entries."
-      />
-    </section>
-  );
-}
 
-function SettingsView({
-  dashboard,
-  onSignOut,
-  onDeleteAllData,
-}: {
-  dashboard: DashboardData;
-  onSignOut: () => void;
-  onDeleteAllData: (confirmation: string) => void;
-}) {
-  const [confirmation, setConfirmation] = useState("");
-
-  return (
-    <>
-      <section className="panel">
-        <div className="panel-header">
-          <div>
-            <h2>Account</h2>
-            <p>{dashboard.user.email}</p>
+      <aside className="right-column">
+        <section className="panel card">
+          <div className="panel-header">
+            <h2>Daily Calories</h2>
           </div>
-        </div>
-        <MetricRow label="Timezone" value={dashboard.user.timezone} />
-        <button className="secondary-button full" type="button" onClick={onSignOut}>
-          <LogOut size={17} /> Log out
-        </button>
-      </section>
-      <section className="panel danger-panel">
-        <div className="panel-header">
-          <div>
-            <h2>Delete Data</h2>
-            <p>This cannot be undone.</p>
+          <DailyCaloriesChart days={trendDays} selectedDate={selectedDate} todayDate={dashboard.today.date} onSelectDate={onSelectDate} />
+        </section>
+
+        <section className="panel card">
+          <div className="panel-header">
+            <h2>{foodCardTitle(selectedDate, dashboard.today.date)}</h2>
+            <button className="add-button" type="button" onClick={() => onAddFood(selectedDate)} aria-label="Add food" title="Add food">
+              <Plus size={18} />
+            </button>
           </div>
-        </div>
-        <input
-          className="search-input"
-          value={confirmation}
-          onChange={(event) => setConfirmation(event.target.value)}
-          placeholder="Type DELETE ALL MY DATA"
-        />
-        <button
-          className="danger-button full"
-          type="button"
-          disabled={confirmation !== "DELETE ALL MY DATA"}
-          onClick={() => onDeleteAllData(confirmation)}
-        >
-          <Trash2 size={17} /> Delete all data
-        </button>
-      </section>
-    </>
-  );
-}
-
-function SummaryGrid({ totals }: { totals: { calories: number; protein_g: number; carbs_g: number; fat_g: number } }) {
-  return (
-    <section className="summary-grid">
-      <SummaryTile label="Calories" value={totals.calories.toLocaleString()} suffix="kcal" />
-      <SummaryTile label="Protein" value={formatMacro(totals.protein_g)} suffix="g" />
-      <SummaryTile label="Carbs" value={formatMacro(totals.carbs_g)} suffix="g" />
-      <SummaryTile label="Fat" value={formatMacro(totals.fat_g)} suffix="g" />
-    </section>
-  );
-}
-
-function SummaryTile({ label, value, suffix }: { label: string; value: string; suffix: string }) {
-  return (
-    <div className="summary-tile">
-      <span>{label}</span>
-      <strong>{value}</strong>
-      <small>{suffix}</small>
+          <FoodList
+            entries={selectedEntries}
+            onEdit={onEditFood}
+            emptyText={selectedIsLoading ? "Loading food entries..." : "No food logged for this day."}
+          />
+        </section>
+      </aside>
     </div>
   );
 }
 
-function DayStrip({
+function MetricSummary({
+  totals,
+  average,
+}: {
+  totals: DashboardData["today"]["totals"];
+  average: { label: string; calories: number; protein_g: number; carbs_g: number; fat_g: number };
+}) {
+  return (
+    <section className="macro-grid" aria-label="Today summary">
+      <article className="metric-card calorie-hero primary card">
+        <div className="calorie-topline">
+          <span className="metric-label">Today Calories</span>
+          <strong className="metric-value">
+            {totals.calories.toLocaleString()} <span className="metric-unit">kcal</span>
+          </strong>
+        </div>
+        <div className="calorie-subline">
+          <span className="metric-average">
+            {average.label} <strong>{average.calories.toLocaleString()} kcal</strong>
+          </span>
+        </div>
+      </article>
+      <div className="macro-row">
+        <CompactMetric label="Protein" value={formatMacro(totals.protein_g)} unit="g" averageLabel={average.label} averageValue={`${formatMacro(average.protein_g)}g`} />
+        <CompactMetric label="Carbs" value={formatMacro(totals.carbs_g)} unit="g" averageLabel={average.label} averageValue={`${formatMacro(average.carbs_g)}g`} />
+        <CompactMetric label="Fat" value={formatMacro(totals.fat_g)} unit="g" averageLabel={average.label} averageValue={`${formatMacro(average.fat_g)}g`} />
+      </div>
+    </section>
+  );
+}
+
+function CompactMetric({
+  label,
+  value,
+  unit,
+  averageLabel,
+  averageValue,
+}: {
+  label: string;
+  value: string;
+  unit: string;
+  averageLabel: string;
+  averageValue: string;
+}) {
+  return (
+    <article className="metric-card compact-macro card">
+      <span className="metric-label">{label}</span>
+      <strong className="metric-value">
+        {value}
+        <span className="metric-unit">{unit}</span>
+      </strong>
+      <div className="metric-average">
+        {averageLabel} <strong>{averageValue}</strong>
+      </div>
+    </article>
+  );
+}
+
+function DailyCaloriesChart({
   days,
   selectedDate,
+  todayDate,
   onSelectDate,
 }: {
   days: DashboardData["last_14_days"]["days"];
   selectedDate: string;
+  todayDate: string;
   onSelectDate: (date: string) => void;
 }) {
-  const stripRef = useRef<HTMLDivElement | null>(null);
   const loggedDays = days.filter((day) => day.entries_count > 0);
   const maxCalories = Math.max(1, ...loggedDays.map((day) => day.calories));
 
-  useEffect(() => {
-    const strip = stripRef.current;
-    if (!strip) return;
-    strip.scrollLeft = strip.scrollWidth;
-  }, [days.length, selectedDate]);
-
   return (
-    <div className="day-strip" ref={stripRef}>
+    <div className="chart-days">
       {days.map((day) => {
         const hasLog = day.entries_count > 0;
         const selected = day.date === selectedDate;
+        const today = day.date === todayDate;
 
         return (
           <button
-            className={`day-bar ${selected ? "selected" : ""} ${hasLog ? "" : "empty"}`}
+            className={`day-bar ${selected ? "selected" : ""} ${today ? "today" : ""} ${hasLog ? "" : "empty"}`}
             type="button"
             key={day.date}
             onClick={() => onSelectDate(day.date)}
             aria-label={`${shortDay(day.date)}: ${hasLog ? `${day.calories} calories logged` : "no food logged"}`}
           >
             <span className="bar-track">
-              {hasLog ? (
-                <span className="bar-fill" style={{ height: `${Math.max(10, (day.calories / maxCalories) * 100)}%` }} />
-              ) : (
-                <span className="bar-empty-dot" />
-              )}
+              {hasLog ? <span className="bar-fill" style={{ height: `${Math.max(10, (day.calories / maxCalories) * 100)}%` }} /> : <span className="bar-empty-dot" />}
             </span>
             <span>{shortDay(day.date)}</span>
-            <strong>{hasLog ? day.calories : "No log"}</strong>
+            <strong>{hasLog ? day.calories.toLocaleString() : "0"}</strong>
           </button>
         );
       })}
@@ -588,17 +400,105 @@ function DayStrip({
   );
 }
 
+function ProteinTrendCard({ days, todayDate }: { days: DashboardData["last_14_days"]["days"]; todayDate: string }) {
+  const maxProtein = Math.max(1, ...days.filter((day) => day.entries_count > 0).map((day) => day.protein_g));
+
+  return (
+    <article className="panel card">
+      <div className="panel-header">
+        <h2>Protein Trend</h2>
+      </div>
+      <div className="compact-chart">
+        {days.map((day) => {
+          const hasLog = day.entries_count > 0;
+          return (
+            <div className={`compact-row ${day.date === todayDate ? "today" : ""}`} key={day.date}>
+              <span>{shortDay(day.date)}</span>
+              <div className="compact-track">
+                <span className="compact-fill" style={{ width: hasLog ? `${Math.max(5, (day.protein_g / maxProtein) * 100)}%` : "0%" }} />
+              </div>
+              <strong>{hasLog ? `${formatMacro(day.protein_g)}g` : ""}</strong>
+            </div>
+          );
+        })}
+      </div>
+    </article>
+  );
+}
+
+function WeightTrendCard({ dashboard }: { dashboard: DashboardData }) {
+  const entries = [...dashboard.recent_weight_entries].sort((a, b) => a.date.localeCompare(b.date)).slice(-6);
+
+  if (entries.length === 0) {
+    return (
+      <article className="panel card">
+        <div className="panel-header">
+          <h2>Weight Trend</h2>
+        </div>
+        <div className="empty-state">No weight logged yet.</div>
+      </article>
+    );
+  }
+
+  if (entries.length === 1) {
+    return (
+      <article className="panel card weight-latest-card">
+        <div>
+          <h2>Weight Trend</h2>
+          <p className="muted">Latest entry</p>
+        </div>
+        <strong>{formatMacro(entries[0].weight_kg)} kg</strong>
+      </article>
+    );
+  }
+
+  const weights = entries.map((entry) => entry.weight_kg);
+  const min = Math.min(...weights);
+  const max = Math.max(...weights);
+  const range = Math.max(0.1, max - min);
+  const width = 520;
+  const height = 124;
+  const points = entries.map((entry, index) => {
+    const x = entries.length === 1 ? width / 2 : (index / (entries.length - 1)) * width;
+    const y = 14 + ((max - entry.weight_kg) / range) * (height - 28);
+    return { x, y, entry };
+  });
+  const path = points.map((point, index) => `${index === 0 ? "M" : "L"}${point.x.toFixed(1)} ${point.y.toFixed(1)}`).join(" ");
+  const delta = entries[entries.length - 1].weight_kg - entries[0].weight_kg;
+
+  return (
+    <article className="panel card">
+      <div className="panel-header">
+        <h2>Weight Trend</h2>
+      </div>
+      <div className="weight-chart">
+        <svg className="weight-svg" viewBox={`0 0 ${width} ${height}`} role="img" aria-label={`Weight trend from ${formatMacro(entries[0].weight_kg)}kg to ${formatMacro(entries[entries.length - 1].weight_kg)}kg`}>
+          <line className="weight-gridline" x1="0" y1="20" x2={width} y2="20" />
+          <line className="weight-gridline" x1="0" y1="62" x2={width} y2="62" />
+          <line className="weight-gridline" x1="0" y1="104" x2={width} y2="104" />
+          <path className="weight-path" d={path} />
+          {points.map((point) => (
+            <circle className="weight-dot" cx={point.x} cy={point.y} r="6" key={point.entry.id} />
+          ))}
+        </svg>
+        <div className="weight-labels">
+          {entries.map((entry) => (
+            <span key={entry.id}>{formatMacro(entry.weight_kg)}</span>
+          ))}
+        </div>
+        <p className="weight-change">{weightChangeText(delta)}</p>
+      </div>
+    </article>
+  );
+}
+
 function FoodList({
   entries,
   onEdit,
-  onDelete,
-  onDateClick,
   emptyText,
 }: {
   entries: FoodEntry[];
   onEdit: (entry: FoodEntry) => void;
-  onDelete: (entry: FoodEntry) => void;
-  onDateClick?: (date: string) => void;
   emptyText: string;
 }) {
   if (entries.length === 0) return <div className="empty-state">{emptyText}</div>;
@@ -608,7 +508,7 @@ function FoodList({
       {entries.map((entry) => (
         <article className="food-row" key={entry.id}>
           <div className="food-main">
-            <button className="food-title" type="button" onClick={() => onDateClick?.(entry.consumption_date)}>
+            <button className="food-title" type="button" onClick={() => onEdit(entry)}>
               {entry.description}
             </button>
             <span>
@@ -622,11 +522,8 @@ function FoodList({
             </span>
           </div>
           <div className="row-actions">
-            <button className="icon-button small" type="button" onClick={() => onEdit(entry)} aria-label="Edit food entry">
+            <button className="edit-button" type="button" onClick={() => onEdit(entry)} aria-label="Edit food entry" title="Edit food entry">
               <Edit3 size={16} />
-            </button>
-            <button className="icon-button small danger-icon" type="button" onClick={() => onDelete(entry)} aria-label="Delete food entry">
-              <Trash2 size={16} />
             </button>
           </div>
         </article>
@@ -635,67 +532,17 @@ function FoodList({
   );
 }
 
-function WeightPanel({
-  day,
+function FoodEntrySheet({
+  form,
+  onClose,
   onSave,
   onDelete,
-  saving,
 }: {
-  day: DayData;
-  onSave: (values: WeightEntryInput, existingId?: string) => void;
-  onDelete: (id: string) => void;
-  saving: boolean;
+  form: FoodFormState;
+  onClose: () => void;
+  onSave: (values: FoodEntryInput) => void;
+  onDelete?: () => void | Promise<void>;
 }) {
-  const [weight, setWeight] = useState(day.weight_entry?.weight_kg.toString() ?? "");
-  const [note, setNote] = useState(day.weight_entry?.note ?? "");
-
-  useEffect(() => {
-    setWeight(day.weight_entry?.weight_kg.toString() ?? "");
-    setNote(day.weight_entry?.note ?? "");
-  }, [day]);
-
-  const weightNumber = Number(weight);
-  const canSave = Number.isFinite(weightNumber) && weightNumber > 0;
-
-  return (
-    <section className="panel">
-      <div className="panel-header">
-        <div>
-          <h2>Weight</h2>
-          <p>{day.weight_entry ? "Saved for this date" : "No weight on this date"}</p>
-        </div>
-        <Weight size={19} />
-      </div>
-      <div className="form-grid two">
-        <label>
-          Weight kg
-          <input value={weight} onChange={(event) => setWeight(event.target.value)} inputMode="decimal" />
-        </label>
-        <label>
-          Note
-          <input value={note} onChange={(event) => setNote(event.target.value)} />
-        </label>
-      </div>
-      <div className="button-row">
-        <button
-          className="primary-button"
-          type="button"
-          disabled={!canSave || saving}
-          onClick={() => onSave({ date: day.date, weight_kg: weightNumber, note: note || null }, day.weight_entry?.id)}
-        >
-          <Check size={17} /> Save weight
-        </button>
-        {day.weight_entry ? (
-          <button className="secondary-button danger-text" type="button" disabled={saving} onClick={() => onDelete(day.weight_entry!.id)}>
-            <Trash2 size={17} /> Delete
-          </button>
-        ) : null}
-      </div>
-    </section>
-  );
-}
-
-function FoodEntrySheet({ form, onClose, onSave }: { form: FoodFormState; onClose: () => void; onSave: (values: FoodEntryInput) => void }) {
   const [values, setValues] = useState(form.values);
   const canSave = values.description.trim() && values.consumption_date && Number.isFinite(values.calories) && values.calories >= 0;
 
@@ -762,9 +609,16 @@ function FoodEntrySheet({ form, onClose, onSave }: { form: FoodFormState; onClos
           Notes
           <textarea value={values.notes ?? ""} onChange={(event) => setField("notes", event.target.value || null)} />
         </label>
-        <button className="primary-button full" type="button" disabled={!canSave} onClick={() => onSave(values)}>
-          <Check size={17} /> Save
-        </button>
+        <div className="sheet-actions">
+          <button className="primary-button full" type="button" disabled={!canSave} onClick={() => onSave(values)}>
+            <Check size={17} /> Save
+          </button>
+          {onDelete ? (
+            <button className="secondary-button danger-text full" type="button" onClick={onDelete}>
+              <Trash2 size={17} /> Delete entry
+            </button>
+          ) : null}
+        </div>
       </form>
     </div>
   );
@@ -779,63 +633,97 @@ function NumberField({ label, value, onChange }: { label: string; value: number;
   );
 }
 
-function MacroTable({ totals }: { totals: Omit<DashboardData["today"]["totals"], "date"> }) {
-  return (
-    <div className="macro-table">
-      <MetricRow label="Calories" value={`${totals.calories} kcal`} />
-      <MetricRow label="Protein" value={`${formatMacro(totals.protein_g)}g`} />
-      <MetricRow label="Carbs" value={`${formatMacro(totals.carbs_g)}g`} />
-      <MetricRow label="Fat" value={`${formatMacro(totals.fat_g)}g`} />
-    </div>
-  );
-}
-
-function MetricRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="metric-row">
-      <span>{label}</span>
-      <strong>{value}</strong>
-    </div>
-  );
-}
-
-function BottomNav({ view, onChange }: { view: View; onChange: (view: View) => void }) {
-  const items: Array<{ view: View; label: string; icon: typeof Utensils }> = [
-    { view: "today", label: "Today", icon: Utensils },
-    { view: "trends", label: "Trends", icon: Activity },
-    { view: "entries", label: "Entries", icon: List },
-    { view: "settings", label: "Settings", icon: Settings },
-  ];
-
-  return (
-    <nav className="bottom-nav">
-      {items.map((item) => {
-        const Icon = item.icon;
-        return (
-          <button className={view === item.view ? "active" : ""} type="button" onClick={() => onChange(item.view)} key={item.view}>
-            <Icon size={19} />
-            <span>{item.label}</span>
-          </button>
-        );
-      })}
-    </nav>
-  );
-}
-
 function LoginScreen({ error, onSignIn }: { error: string | null; onSignIn: () => void }) {
   return (
-    <main className="login-screen">
-      <div className="login-panel">
-        <div className="brand-mark">
-          <Utensils size={28} />
+    <main className="login-preview-screen">
+      <div className="login-preview-shell" aria-hidden="true">
+        <header className="topbar login-preview-topbar">
+          <div className="brand">
+            <img className="brand-logo" src={logoUrl} alt="" />
+            <div>
+              <p className="eyebrow">Easy Calorie Tracker</p>
+              <h1>Your Dashboard</h1>
+              <p className="header-email">your data is waiting</p>
+            </div>
+          </div>
+        </header>
+        <div className="dashboard-grid login-preview-grid">
+          <div className="left-column">
+            <section className="macro-grid">
+              <article className="metric-card calorie-hero primary card">
+                <div className="calorie-topline">
+                  <span className="metric-label">Today Calories</span>
+                  <strong className="metric-value">1,652 <span className="metric-unit">kcal</span></strong>
+                </div>
+                <div className="calorie-subline">
+                  <span className="metric-average">7-day avg <strong>1,802 kcal</strong></span>
+                </div>
+              </article>
+              <div className="macro-row">
+                <article className="metric-card compact-macro card">
+                  <span className="metric-label">Protein</span>
+                  <strong className="metric-value">123<span className="metric-unit">g</span></strong>
+                </article>
+                <article className="metric-card compact-macro card">
+                  <span className="metric-label">Carbs</span>
+                  <strong className="metric-value">116<span className="metric-unit">g</span></strong>
+                </article>
+                <article className="metric-card compact-macro card">
+                  <span className="metric-label">Fat</span>
+                  <strong className="metric-value">76<span className="metric-unit">g</span></strong>
+                </article>
+              </div>
+            </section>
+            <section className="secondary-grid">
+              <article className="panel card login-preview-panel">
+                <div className="panel-header"><h2>Protein Trend</h2></div>
+                <div className="compact-chart">
+                  <div className="compact-row"><span>Mon</span><div className="compact-track"><span className="compact-fill" style={{ width: "54%" }} /></div><strong>68g</strong></div>
+                  <div className="compact-row"><span>Tue</span><div className="compact-track"><span className="compact-fill" style={{ width: "78%" }} /></div><strong>98g</strong></div>
+                  <div className="compact-row"><span>Wed</span><div className="compact-track"><span className="compact-fill" style={{ width: "96%" }} /></div><strong>121g</strong></div>
+                </div>
+              </article>
+              <article className="panel card login-preview-panel">
+                <div className="panel-header"><h2>Weight Trend</h2></div>
+                <div className="weight-chart" />
+              </article>
+            </section>
+          </div>
+          <aside className="right-column">
+            <section className="panel card login-preview-panel">
+              <div className="panel-header"><h2>Daily Calories</h2></div>
+              <div className="chart-days">
+                {[48, 62, 77, 100, 58, 70].map((height, index) => (
+                  <div className="day-bar" key={index}>
+                    <span className="bar-track"><span className="bar-fill" style={{ height: `${height}%` }} /></span>
+                    <span>Day</span>
+                    <strong>----</strong>
+                  </div>
+                ))}
+              </div>
+            </section>
+            <section className="panel card login-preview-panel">
+              <div className="panel-header"><h2>Today's Food</h2></div>
+              <div className="food-list">
+                <div className="food-row"><div className="food-main"><button className="food-title" type="button">Homemade meal estimate</button><span>lunch / Core</span></div><div className="food-macros"><strong>--- kcal</strong><span>P -- / C -- / F --</span></div></div>
+                <div className="food-row"><div className="food-main"><button className="food-title" type="button">Evening snack</button><span>snack / Core</span></div><div className="food-macros"><strong>--- kcal</strong><span>P -- / C -- / F --</span></div></div>
+              </div>
+            </section>
+          </aside>
         </div>
-        <h1>Easy Calorie Tracker</h1>
-        <p>Calories and macros, pulled from your ChatGPT logs into a dashboard you can actually inspect.</p>
+      </div>
+      <section className="login-unlock-card">
+        <img className="brand-logo" src={logoUrl} alt="Easy Calorie Tracker logo" />
+        <div>
+          <p className="eyebrow">Easy Calorie Tracker</p>
+          <h1>Login to view your data</h1>
+        </div>
         {error ? <div className="error-banner">{error}</div> : null}
         <button className="primary-button full" type="button" onClick={onSignIn}>
           Sign in with Google
         </button>
-      </div>
+      </section>
+      <AppFooter />
     </main>
   );
 }
@@ -882,7 +770,10 @@ function PrivacyPage() {
         </p>
 
         <h2>Contact</h2>
-        <p>For privacy questions, contact the app owner directly.</p>
+        <p>
+          For privacy questions, <a href={`mailto:${contactEmail}`}>contact me</a>.
+        </p>
+        <AppFooter />
       </section>
     </main>
   );
@@ -919,6 +810,7 @@ function TermsPage() {
           The app is provided as-is and may change, pause, or stop during active development.
         </p>
       </section>
+      <AppFooter />
     </main>
   );
 }
@@ -930,6 +822,7 @@ function SetupMissing() {
         <h1>Dashboard Setup</h1>
         <p>Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` for this Pages project.</p>
       </div>
+      <AppFooter />
     </main>
   );
 }
@@ -942,11 +835,13 @@ function ShellLoading() {
   );
 }
 
-function titleForView(view: View): string {
-  if (view === "today") return "Today";
-  if (view === "trends") return "Trends";
-  if (view === "entries") return "Entries";
-  return "Settings";
+function AppFooter() {
+  return (
+    <footer className="app-footer">
+      <a href="/privacy">Privacy Policy</a>
+      <a href={`mailto:${contactEmail}`}>Contact me</a>
+    </footer>
+  );
 }
 
 function newFoodForm(date: string): FoodFormState {
@@ -1000,16 +895,62 @@ function shortDay(date: string): string {
   return new Date(`${date}T00:00:00`).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
+function foodCardTitle(date: string, todayDate: string): string {
+  if (date === todayDate) return "Today's Food";
+  return `Food on ${formatFullDate(date)}`;
+}
+
 function formatFullDate(date: string): string {
-  return new Date(`${date}T00:00:00`).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+  return new Date(`${date}T00:00:00`).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
 function capitalize(value: string): string {
   return value.charAt(0).toUpperCase() + value.slice(1);
 }
 
-function signed(value: number): string {
-  return value > 0 ? `+${formatMacro(value)}` : formatMacro(value);
+function firstName(value: string): string {
+  return value.trim().split(/\s+/)[0] || value;
+}
+
+function smartTrendDays(days: DashboardData["last_14_days"]["days"]): DashboardData["last_14_days"]["days"] {
+  if (days.length <= 6) return days;
+  const firstLoggedIndex = days.findIndex((day) => day.entries_count > 0);
+  if (firstLoggedIndex === -1) return days.slice(-6);
+  return days.slice(Math.max(0, Math.min(firstLoggedIndex, days.length - 6)));
+}
+
+function rollingAverage(days: DashboardData["last_14_days"]["days"]): {
+  label: string;
+  calories: number;
+  protein_g: number;
+  carbs_g: number;
+  fat_g: number;
+} {
+  const loggedDays = days.filter((day) => day.entries_count > 0).slice(-7);
+  const count = loggedDays.length || 1;
+  const totals = loggedDays.reduce(
+    (sum, day) => ({
+      calories: sum.calories + day.calories,
+      protein_g: sum.protein_g + day.protein_g,
+      carbs_g: sum.carbs_g + day.carbs_g,
+      fat_g: sum.fat_g + day.fat_g,
+    }),
+    { calories: 0, protein_g: 0, carbs_g: 0, fat_g: 0 }
+  );
+
+  return {
+    label: `${loggedDays.length || 0}-day avg`,
+    calories: Math.round(totals.calories / count),
+    protein_g: totals.protein_g / count,
+    carbs_g: totals.carbs_g / count,
+    fat_g: totals.fat_g / count,
+  };
+}
+
+function weightChangeText(delta: number): string {
+  if (Math.abs(delta) < 0.05) return "No major change across recent entries";
+  const direction = delta < 0 ? "Down" : "Up";
+  return `${direction} ${formatMacro(Math.abs(delta))} kg across recent entries`;
 }
 
 function errorMessage(error: unknown): string {

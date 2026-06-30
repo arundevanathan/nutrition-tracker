@@ -1,0 +1,972 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Easy Calorie Tracker - Ghost Redesign</title>
+    <style>
+      :root {
+        color-scheme: light;
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: #eef5f1;
+        color: #18231d;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-width: 320px;
+        background:
+          radial-gradient(circle at 18% 0%, rgba(232, 246, 237, 0.96), transparent 34rem),
+          linear-gradient(135deg, #f8fbf9 0%, #eef5f1 54%, #f6f1ea 100%);
+      }
+
+      button {
+        font: inherit;
+      }
+
+      .page {
+        min-height: 100vh;
+        padding: 28px;
+      }
+
+      .app-frame {
+        width: min(1240px, 100%);
+        margin: 0 auto;
+        border: 1px solid rgba(196, 211, 203, 0.9);
+        border-radius: 8px;
+        padding: 18px;
+        background: rgba(255, 255, 255, 0.72);
+        box-shadow: 0 24px 70px rgba(29, 51, 39, 0.12);
+      }
+
+      .topbar {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 18px;
+        align-items: start;
+        border-radius: 8px;
+        padding: 14px 16px 16px;
+        background: rgba(250, 252, 250, 0.94);
+        box-shadow: 0 10px 28px rgba(34, 54, 43, 0.06);
+      }
+
+      .brand {
+        display: flex;
+        gap: 13px;
+        align-items: center;
+        min-width: 0;
+      }
+
+      .brand-logo {
+        width: 54px;
+        height: 54px;
+        flex: 0 0 auto;
+        border-radius: 8px;
+        object-fit: cover;
+        box-shadow: 0 8px 18px rgba(28, 62, 52, 0.14);
+      }
+
+      .eyebrow,
+      .muted,
+      .metric-label,
+      .food-meta,
+      .food-macros,
+      .card-subtitle,
+      .chart-label,
+      .average-note {
+        color: #687970;
+      }
+
+      .eyebrow {
+        margin: 0 0 2px;
+        font-size: 12px;
+        font-weight: 800;
+        letter-spacing: 0;
+        text-transform: uppercase;
+      }
+
+      h1,
+      h2,
+      h3,
+      p {
+        margin: 0;
+      }
+
+      h1 {
+        font-size: clamp(28px, 4vw, 42px);
+        line-height: 1.02;
+        letter-spacing: 0;
+      }
+
+      h2 {
+        font-size: 19px;
+        line-height: 1.15;
+        letter-spacing: 0;
+      }
+
+      h3 {
+        font-size: 15px;
+        letter-spacing: 0;
+      }
+
+      .account {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        justify-content: end;
+        padding-top: 3px;
+      }
+
+      .account-text {
+        min-width: 0;
+      }
+
+      .account-text strong,
+      .account-text span {
+        display: block;
+        white-space: nowrap;
+      }
+
+      .account-text span {
+        margin-top: 2px;
+        color: #7a8981;
+        font-size: 13px;
+      }
+
+      .header-action,
+      .primary-button,
+      .edit-button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        min-height: 42px;
+        border-radius: 8px;
+        font-weight: 800;
+      }
+
+      .header-action {
+        width: 38px;
+        min-height: 38px;
+        border: 0;
+        color: #24352c;
+        background: rgba(255, 255, 255, 0.72);
+      }
+
+      .header-action:hover {
+        background: #edf5f3;
+      }
+
+      .header-action svg {
+        width: 18px;
+        height: 18px;
+      }
+
+      .primary-button {
+        border: 0;
+        color: #ffffff;
+        background: #12663f;
+        padding: 0 15px;
+        box-shadow: 0 12px 24px rgba(18, 102, 63, 0.18);
+      }
+
+      .add-button {
+        display: inline-grid;
+        width: 38px;
+        height: 38px;
+        place-items: center;
+        border: 0;
+        border-radius: 8px;
+        color: #ffffff;
+        background: #4e888a;
+        box-shadow: 0 10px 20px rgba(78, 136, 138, 0.18);
+      }
+
+      .add-button svg {
+        width: 18px;
+        height: 18px;
+      }
+
+      .dashboard {
+        display: grid;
+        grid-template-columns: minmax(0, 1.08fr) minmax(350px, 0.92fr);
+        gap: 16px;
+        margin-top: 16px;
+      }
+
+      .left-column,
+      .right-column,
+      .secondary-grid {
+        display: grid;
+        gap: 16px;
+        align-content: start;
+        min-width: 0;
+      }
+
+      .macro-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 10px;
+      }
+
+      .macro-row {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .secondary-grid {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      }
+
+      .card {
+        min-width: 0;
+        border: 0;
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.94);
+        box-shadow: 0 12px 30px rgba(34, 54, 43, 0.055);
+      }
+
+      .metric-card {
+        min-height: 88px;
+        padding: 12px 13px;
+      }
+
+      .metric-card.calorie-hero {
+        min-height: 92px;
+      }
+
+      .metric-card.compact-macro {
+        min-height: 72px;
+      }
+
+      .metric-card.primary {
+        color: #ffffff;
+        background: linear-gradient(135deg, #2f6f72, #55989a);
+        border-color: #55989a;
+      }
+
+      .metric-card.primary .metric-label,
+      .metric-card.primary .metric-unit,
+      .metric-card.primary .metric-note,
+      .metric-card.primary .metric-average {
+        color: rgba(255, 255, 255, 0.8);
+      }
+
+      .metric-label {
+        display: block;
+        font-size: 14px;
+        font-weight: 750;
+      }
+
+      .metric-value {
+        display: block;
+        margin-top: 5px;
+        font-size: clamp(24px, 3vw, 34px);
+        line-height: 0.95;
+        letter-spacing: 0;
+      }
+
+      .calorie-hero .metric-value {
+        text-align: right;
+      }
+
+      .calorie-topline,
+      .calorie-subline {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 12px;
+        align-items: baseline;
+      }
+
+      .calorie-subline {
+        display: flex;
+        justify-content: flex-end;
+        margin-top: 8px;
+      }
+
+      .metric-unit,
+      .metric-note {
+        display: inline;
+        margin-top: 4px;
+        font-size: 13px;
+      }
+
+      .metric-value .metric-unit {
+        margin-left: 4px;
+        font-size: 0.48em;
+        font-weight: 750;
+        vertical-align: baseline;
+      }
+
+      .metric-average {
+        display: block;
+        margin-top: 7px;
+        border-top: 0;
+        padding-top: 0;
+        color: #687970;
+        font-size: 12px;
+        line-height: 1.2;
+      }
+
+      .metric-card.primary .metric-average {
+        border-top-color: transparent;
+      }
+
+      .metric-average strong {
+        color: inherit;
+        font-size: 13px;
+        white-space: nowrap;
+      }
+
+      .calorie-subline .metric-average {
+        margin-top: 0;
+        text-align: right;
+      }
+
+      .panel {
+        padding: 18px;
+      }
+
+      .panel-header {
+        display: flex;
+        align-items: start;
+        justify-content: space-between;
+        gap: 14px;
+        margin-bottom: 16px;
+      }
+
+      .card-subtitle {
+        margin-top: 4px;
+        font-size: 14px;
+      }
+
+      .chart-days {
+        display: grid;
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+        gap: 10px;
+        align-items: end;
+      }
+
+      .day,
+      .protein-day {
+        display: grid;
+        gap: 8px;
+        min-width: 0;
+        border: 1px solid transparent;
+        border-radius: 8px;
+        padding: 8px;
+        background: #f7faf8;
+      }
+
+      .day {
+        grid-template-rows: 116px auto auto;
+      }
+
+      .protein-day {
+        grid-template-rows: 96px auto auto;
+      }
+
+      .day.today,
+      .protein-day.today {
+        border-color: rgba(78, 136, 138, 0.55);
+        background: #f0f7f6;
+      }
+
+      .day.selected,
+      .protein-day.selected {
+        background: #eef6f5;
+        box-shadow: inset 0 0 0 2px rgba(78, 136, 138, 0.14);
+      }
+
+      .bar-track {
+        display: flex;
+        align-items: end;
+        justify-content: center;
+        border-radius: 6px;
+        background: #edf3ef;
+        overflow: hidden;
+      }
+
+      .bar {
+        display: block;
+        width: 100%;
+        min-height: 12px;
+        border-radius: 4px 4px 0 0;
+        background: #4e888a;
+      }
+
+      .protein-day .bar {
+        background: #4e888a;
+      }
+
+      .day.empty .bar-track,
+      .protein-day.empty .bar-track {
+        align-items: center;
+        border: 1px dashed #d6e2dc;
+        background: #fbfdfb;
+      }
+
+      .empty-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 999px;
+        background: #c6d4cc;
+      }
+
+      .day span,
+      .day strong,
+      .protein-day span,
+      .protein-day strong {
+        min-width: 0;
+        overflow: hidden;
+        text-align: center;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .day span,
+      .protein-day span {
+        color: #687970;
+        font-size: 12px;
+      }
+
+      .day strong,
+      .protein-day strong {
+        font-size: 13px;
+      }
+
+      .day.empty strong,
+      .protein-day.empty strong {
+        visibility: hidden;
+      }
+
+      .compact-chart {
+        display: grid;
+        gap: 10px;
+        border-radius: 8px;
+        padding: 12px;
+        background: #f7faf8;
+      }
+
+      .compact-row {
+        display: grid;
+        grid-template-columns: 54px minmax(0, 1fr) 44px;
+        gap: 10px;
+        align-items: center;
+      }
+
+      .compact-row span,
+      .compact-row strong {
+        font-size: 12px;
+        line-height: 1;
+        white-space: nowrap;
+      }
+
+      .compact-row span {
+        color: #687970;
+      }
+
+      .compact-row strong {
+        text-align: right;
+      }
+
+      .compact-track {
+        height: 10px;
+        border-radius: 999px;
+        background: #e8f0ec;
+        overflow: hidden;
+      }
+
+      .compact-fill {
+        display: block;
+        height: 100%;
+        border-radius: inherit;
+        background: #4e888a;
+      }
+
+      .compact-row.selected {
+        border-radius: 8px;
+        margin: -5px -6px;
+        padding: 5px 6px;
+        background: #edf7f5;
+      }
+
+      .weight-chart {
+        position: relative;
+        min-height: 178px;
+        border-radius: 8px;
+        padding: 18px 14px 34px;
+        background: #f7faf8;
+      }
+
+      .weight-svg {
+        display: block;
+        width: 100%;
+        height: 124px;
+        overflow: visible;
+      }
+
+      .weight-gridline {
+        stroke: #dde8e2;
+        stroke-width: 1;
+      }
+
+      .weight-path {
+        fill: none;
+        stroke: #4e888a;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        stroke-width: 3;
+      }
+
+      .weight-dot {
+        fill: #ffffff;
+        stroke: #4e888a;
+        stroke-width: 3;
+      }
+
+      .weight-labels {
+        display: grid;
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+        gap: 6px;
+        margin-top: 6px;
+      }
+
+      .weight-labels span {
+        color: #687970;
+        font-size: 12px;
+        line-height: 1.15;
+        text-align: center;
+      }
+
+      .weight-change {
+        margin-top: 10px;
+        color: #2f7060;
+        font-size: 13px;
+        font-weight: 850;
+      }
+
+      .food-list {
+        display: grid;
+      }
+
+      .food-row {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto auto;
+        gap: 12px;
+        align-items: start;
+        padding: 13px 0;
+        border-top: 1px solid #edf2ef;
+      }
+
+      .food-row:first-child {
+        border-top: 0;
+        padding-top: 0;
+      }
+
+      .food-title {
+        display: block;
+        color: #18231d;
+        font-size: 15px;
+        font-weight: 800;
+        line-height: 1.28;
+      }
+
+      .food-meta,
+      .food-macros {
+        display: block;
+        margin-top: 5px;
+        font-size: 12px;
+        line-height: 1.25;
+      }
+
+      .food-calories {
+        display: block;
+        color: #18231d;
+        font-size: 15px;
+        font-weight: 850;
+        text-align: right;
+        white-space: nowrap;
+      }
+
+      .edit-button {
+        width: 34px;
+        min-height: 34px;
+        border: 1px solid #d9e3dd;
+        color: #314138;
+        background: #ffffff;
+      }
+
+      .edit-button svg {
+        width: 16px;
+        height: 16px;
+      }
+
+      @media (max-width: 1080px) {
+        .dashboard,
+        .macro-grid,
+        .secondary-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .macro-grid,
+        .macro-row {
+          gap: 9px;
+        }
+
+        .metric-card {
+          display: block;
+          min-height: auto;
+          padding: 14px;
+        }
+
+        .metric-value {
+          margin-top: 5px;
+          font-size: 28px;
+        }
+
+        .metric-average {
+          margin-top: 7px;
+        }
+      }
+
+      @media (max-width: 720px) {
+        .page {
+          padding: 14px;
+        }
+
+        .app-frame {
+          border: 0;
+          padding: 0;
+          background: transparent;
+          box-shadow: none;
+        }
+
+        .topbar {
+          grid-template-columns: minmax(0, 1fr) auto;
+          gap: 10px;
+          padding: 14px;
+        }
+
+        .account {
+          justify-content: end;
+        }
+
+        .dashboard {
+          gap: 12px;
+          margin-top: 12px;
+        }
+
+        .left-column,
+        .right-column,
+        .secondary-grid {
+          gap: 12px;
+        }
+
+        .panel {
+          padding: 14px;
+        }
+
+        .chart-days {
+          grid-template-columns: repeat(6, minmax(56px, 1fr));
+          overflow-x: auto;
+          padding-bottom: 2px;
+        }
+
+        .day {
+          grid-template-rows: 82px auto auto;
+        }
+
+        .protein-day {
+          grid-template-rows: 72px auto auto;
+        }
+
+        .food-row {
+          grid-template-columns: minmax(0, 1fr) auto;
+          gap: 8px;
+        }
+
+        .food-row .edit-button {
+          grid-column: 1 / -1;
+          justify-self: start;
+        }
+
+        .food-calories {
+          font-size: 14px;
+        }
+
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <section class="app-frame" aria-label="Ghost redesign mock">
+        <header class="topbar">
+          <div class="brand">
+            <img
+              class="brand-logo"
+              src="file:///C:/Users/Arun/Downloads/logo%20for%20the%20easy%20calorie%20tracker%20app%20-%20show%20some%20foodsalad%20etc.png"
+              alt="Easy Calorie Tracker logo"
+            />
+            <div>
+              <p class="eyebrow">Easy Calorie Tracker</p>
+              <h1>Arun's Dashboard</h1>
+              <p class="card-subtitle">arun@example.com</p>
+            </div>
+          </div>
+          <div class="account">
+            <button class="header-action" type="button" aria-label="Refresh" title="Refresh">
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M20 6v5h-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                <path d="M4 18v-5h5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                <path d="M6.1 9a7 7 0 0 1 11.5-2.6L20 8.7" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                <path d="M17.9 15a7 7 0 0 1-11.5 2.6L4 15.3" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+              </svg>
+            </button>
+            <button class="header-action" type="button" aria-label="Log out" title="Log out">
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M10 17l5-5-5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                <path d="M15 12H3" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                <path d="M21 4v16" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+              </svg>
+            </button>
+          </div>
+        </header>
+
+        <div class="dashboard">
+          <div class="left-column">
+            <section class="macro-grid" aria-label="Selected day summary">
+              <article class="metric-card calorie-hero primary card">
+                <div class="calorie-topline">
+                  <span class="metric-label">Today Calories</span>
+                  <strong class="metric-value">1,652 <span class="metric-unit">kcal</span></strong>
+                </div>
+                <div class="calorie-subline">
+                  <span class="metric-average">4-day avg <strong>1,802 kcal</strong></span>
+                </div>
+              </article>
+              <div class="macro-row">
+                <article class="metric-card compact-macro card">
+                  <span class="metric-label">Protein</span>
+                  <strong class="metric-value">123<span class="metric-unit">g</span></strong>
+                  <div class="metric-average">4-day avg <strong>104g</strong></div>
+                </article>
+                <article class="metric-card compact-macro card">
+                  <span class="metric-label">Carbs</span>
+                  <strong class="metric-value">116<span class="metric-unit">g</span></strong>
+                  <div class="metric-average">4-day avg <strong>143g</strong></div>
+                </article>
+                <article class="metric-card compact-macro card">
+                  <span class="metric-label">Fat</span>
+                  <strong class="metric-value">76<span class="metric-unit">g</span></strong>
+                  <div class="metric-average">4-day avg <strong>61g</strong></div>
+                </article>
+              </div>
+            </section>
+
+            <section class="secondary-grid">
+              <article class="panel card">
+                <div class="panel-header">
+                  <div>
+                    <h2>Protein Trend</h2>
+                  </div>
+                </div>
+                <div class="compact-chart">
+                  <div class="compact-row">
+                    <span>Jun 25</span>
+                    <div class="compact-track"><span class="compact-fill" style="width: 0%"></span></div>
+                    <strong>No log</strong>
+                  </div>
+                  <div class="compact-row">
+                    <span>Jun 26</span>
+                    <div class="compact-track"><span class="compact-fill" style="width: 52%"></span></div>
+                    <strong>66g</strong>
+                  </div>
+                  <div class="compact-row">
+                    <span>Jun 27</span>
+                    <div class="compact-track"><span class="compact-fill" style="width: 70%"></span></div>
+                    <strong>89g</strong>
+                  </div>
+                  <div class="compact-row selected">
+                    <span>Jun 28</span>
+                    <div class="compact-track"><span class="compact-fill" style="width: 82%"></span></div>
+                    <strong>104g</strong>
+                  </div>
+                  <div class="compact-row">
+                    <span>Jun 29</span>
+                    <div class="compact-track"><span class="compact-fill" style="width: 100%"></span></div>
+                    <strong>127g</strong>
+                  </div>
+                  <div class="compact-row">
+                    <span>Jun 30</span>
+                    <div class="compact-track"><span class="compact-fill" style="width: 97%"></span></div>
+                    <strong>123g</strong>
+                  </div>
+                </div>
+              </article>
+
+              <article class="panel card">
+                <div class="panel-header">
+                  <div>
+                    <h2>Weight Trend</h2>
+                  </div>
+                </div>
+                <div class="weight-chart">
+                  <svg class="weight-svg" viewBox="0 0 520 124" role="img" aria-label="Weight trending down from 73.9kg to 73.1kg">
+                    <line class="weight-gridline" x1="0" y1="20" x2="520" y2="20" />
+                    <line class="weight-gridline" x1="0" y1="62" x2="520" y2="62" />
+                    <line class="weight-gridline" x1="0" y1="104" x2="520" y2="104" />
+                    <path class="weight-path" d="M10 26 L110 48 L210 37 L310 92 L410 81 L510 110" />
+                    <circle class="weight-dot" cx="10" cy="26" r="6" />
+                    <circle class="weight-dot" cx="110" cy="48" r="6" />
+                    <circle class="weight-dot" cx="210" cy="37" r="6" />
+                    <circle class="weight-dot" cx="310" cy="92" r="6" />
+                    <circle class="weight-dot" cx="410" cy="81" r="6" />
+                    <circle class="weight-dot" cx="510" cy="110" r="6" />
+                  </svg>
+                  <div class="weight-labels">
+                    <span>73.9</span>
+                    <span>73.7</span>
+                    <span>73.8</span>
+                    <span>73.3</span>
+                    <span>73.4</span>
+                    <span>73.1</span>
+                  </div>
+                  <p class="weight-change">Down 0.8 kg across recent entries</p>
+                </div>
+              </article>
+            </section>
+          </div>
+
+          <aside class="right-column">
+            <section class="panel card">
+              <div class="panel-header">
+                <div>
+                  <h2>Daily Calories</h2>
+                </div>
+              </div>
+              <div class="chart-days">
+                <div class="day empty">
+                  <div class="bar-track"><span class="empty-dot"></span></div>
+                  <span>Jun 25</span>
+                  <strong>0</strong>
+                </div>
+                <div class="day">
+                  <div class="bar-track"><span class="bar" style="height: 44%"></span></div>
+                  <span>Jun 26</span>
+                  <strong>1,237</strong>
+                </div>
+                <div class="day">
+                  <div class="bar-track"><span class="bar" style="height: 61%"></span></div>
+                  <span>Jun 27</span>
+                  <strong>1,739</strong>
+                </div>
+                <div class="day selected">
+                  <div class="bar-track"><span class="bar" style="height: 67%"></span></div>
+                  <span>Jun 28</span>
+                  <strong>1,924</strong>
+                </div>
+                <div class="day">
+                  <div class="bar-track"><span class="bar" style="height: 100%"></span></div>
+                  <span>Jun 29</span>
+                  <strong>2,860</strong>
+                </div>
+                <div class="day today">
+                  <div class="bar-track"><span class="bar" style="height: 58%"></span></div>
+                  <span>Jun 30</span>
+                  <strong>1,652</strong>
+                </div>
+              </div>
+            </section>
+
+            <section class="panel card">
+              <div class="panel-header">
+                <div>
+                  <h2>Food on Jun 28</h2>
+                </div>
+                <button class="add-button" type="button" aria-label="Add food" title="Add food">
+                  <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path d="M12 5v14" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                    <path d="M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                  </svg>
+                </button>
+              </div>
+              <div class="food-list">
+                <article class="food-row">
+                  <div>
+                    <span class="food-title">Paneer bhurji bowl with roti</span>
+                    <span class="food-meta">breakfast / Core</span>
+                  </div>
+                  <div>
+                    <span class="food-calories">520 kcal</span>
+                    <span class="food-macros">P 35 / C 48 / F 22</span>
+                  </div>
+                  <button class="edit-button" type="button" aria-label="Edit food entry" title="Edit food entry">
+                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                      <path d="M12 20h9" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                      <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
+                    </svg>
+                  </button>
+                </article>
+                <article class="food-row">
+                  <div>
+                    <span class="food-title">Dal, rice and cucumber salad</span>
+                    <span class="food-meta">lunch / Core</span>
+                  </div>
+                  <div>
+                    <span class="food-calories">610 kcal</span>
+                    <span class="food-macros">P 24 / C 91 / F 14</span>
+                  </div>
+                  <button class="edit-button" type="button" aria-label="Edit food entry" title="Edit food entry">
+                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                      <path d="M12 20h9" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                      <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
+                    </svg>
+                  </button>
+                </article>
+                <article class="food-row">
+                  <div>
+                    <span class="food-title">Greek yogurt with berries</span>
+                    <span class="food-meta">snack / Core</span>
+                  </div>
+                  <div>
+                    <span class="food-calories">210 kcal</span>
+                    <span class="food-macros">P 22 / C 24 / F 4</span>
+                  </div>
+                  <button class="edit-button" type="button" aria-label="Edit food entry" title="Edit food entry">
+                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                      <path d="M12 20h9" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                      <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
+                    </svg>
+                  </button>
+                </article>
+                <article class="food-row">
+                  <div>
+                    <span class="food-title">Besan chilla + dahi</span>
+                    <span class="food-meta">dinner / Core</span>
+                  </div>
+                  <div>
+                    <span class="food-calories">584 kcal</span>
+                    <span class="food-macros">P 23 / C 56 / F 29</span>
+                  </div>
+                  <button class="edit-button" type="button" aria-label="Edit food entry" title="Edit food entry">
+                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                      <path d="M12 20h9" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                      <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
+                    </svg>
+                  </button>
+                </article>
+              </div>
+            </section>
+          </aside>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>
