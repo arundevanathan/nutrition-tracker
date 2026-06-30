@@ -67,16 +67,33 @@ export default function App() {
       return;
     }
 
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
-      setAuthLoading(false);
-    });
+    initializeSession();
 
     const { data } = supabase.auth.onAuthStateChange((_event, nextSession) => {
       setSession(nextSession);
     });
 
     return () => data.subscription.unsubscribe();
+
+    async function initializeSession() {
+      const hashSession = sessionFromHash();
+
+      if (hashSession) {
+        const { data, error: setSessionError } = await supabase!.auth.setSession(hashSession);
+        if (setSessionError) {
+          setError(setSessionError.message);
+        } else {
+          window.history.replaceState(null, document.title, window.location.pathname + window.location.search);
+          setSession(data.session);
+        }
+        setAuthLoading(false);
+        return;
+      }
+
+      const { data } = await supabase!.auth.getSession();
+      setSession(data.session);
+      setAuthLoading(false);
+    }
   }, [supabase]);
 
   useEffect(() => {
@@ -886,4 +903,15 @@ function signed(value: number): string {
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : "Something went wrong";
+}
+
+function sessionFromHash(): { access_token: string; refresh_token: string } | null {
+  if (!window.location.hash.startsWith("#")) return null;
+
+  const params = new URLSearchParams(window.location.hash.slice(1));
+  const accessToken = params.get("access_token");
+  const refreshToken = params.get("refresh_token");
+
+  if (!accessToken || !refreshToken) return null;
+  return { access_token: accessToken, refresh_token: refreshToken };
 }
