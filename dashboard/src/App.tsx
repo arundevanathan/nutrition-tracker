@@ -218,7 +218,6 @@ export default function App() {
       </header>
 
       {error ? <div className="error-banner">{error}</div> : null}
-      <InstallPrompt />
 
       <main className="content">
         {!dashboard ? (
@@ -249,6 +248,7 @@ export default function App() {
           }
         />
       ) : null}
+      <InstallPrompt />
       <AppFooter />
     </div>
   );
@@ -288,7 +288,6 @@ function InstallPrompt() {
     <section className="install-prompt" aria-label="Install app">
       <div>
         <strong>Keep it on your home screen</strong>
-        <p>{installEvent ? "Install the dashboard for faster access during alpha testing." : "On iPhone, open in Safari and use Add to Home Screen."}</p>
       </div>
       <div className="install-actions">
         {installEvent ? (

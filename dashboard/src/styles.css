@@ -949,13 +949,6 @@ label textarea {
   line-height: 1.2;
 }
 
-.install-prompt p {
-  margin-top: 3px;
-  color: #687970;
-  font-size: 13px;
-  line-height: 1.3;
-}
-
 .install-actions {
   display: flex;
   gap: 8px;
