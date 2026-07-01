@@ -551,15 +551,51 @@ p {
   font-weight: 850;
 }
 
-.weight-latest-card {
+.weight-low-data {
+  display: grid;
+  gap: 12px;
+  border-radius: 8px;
+  padding: 14px;
+  background: #f7faf8;
+}
+
+.weight-latest {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: end;
+  border-bottom: 1px solid #e3ece7;
+  padding-bottom: 12px;
+}
+
+.weight-latest span,
+.weight-entry-row span {
+  color: #687970;
+  font-size: 13px;
+  line-height: 1.2;
+}
+
+.weight-latest strong {
+  color: #18231d;
+  font-size: 28px;
+  line-height: 1;
+}
+
+.weight-entry-list {
+  display: grid;
+  gap: 8px;
+}
+
+.weight-entry-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 12px;
   align-items: center;
 }
 
-.weight-latest-card strong {
-  font-size: 26px;
+.weight-entry-row strong {
+  color: #18231d;
+  font-size: 14px;
 }
 
 .food-list {
@@ -894,6 +930,42 @@ label textarea {
   background: #fff3f2;
 }
 
+.install-prompt {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+  margin-top: 14px;
+  border-radius: 8px;
+  padding: 12px 14px;
+  color: #203129;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 10px 28px rgba(34, 54, 43, 0.06);
+}
+
+.install-prompt strong {
+  display: block;
+  font-size: 14px;
+  line-height: 1.2;
+}
+
+.install-prompt p {
+  margin-top: 3px;
+  color: #687970;
+  font-size: 13px;
+  line-height: 1.3;
+}
+
+.install-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.install-button {
+  min-height: 38px;
+}
+
 .empty-state {
   border-radius: 8px;
   padding: 18px;
@@ -1027,6 +1099,14 @@ label textarea {
 
   .food-macros {
     text-align: right;
+  }
+
+  .install-prompt {
+    grid-template-columns: 1fr;
+  }
+
+  .install-actions {
+    justify-content: space-between;
   }
 
   .panel {

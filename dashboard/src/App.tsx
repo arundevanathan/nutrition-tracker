@@ -3,11 +3,13 @@ import type { CSSProperties } from "react";
 import type { Session } from "@supabase/supabase-js";
 import {
   Check,
+  Download,
   Edit3,
   LogOut,
   Plus,
   RefreshCw,
   Trash2,
+  X,
 } from "lucide-react";
 import {
   createFoodEntry,
@@ -26,9 +28,14 @@ type FoodFormState = {
   values: FoodEntryInput;
 };
 
+type BeforeInstallPromptEvent = Event & {
+  prompt: () => Promise<void>;
+};
+
 const mealTypes: MealType[] = ["breakfast", "lunch", "dinner", "snack", "drink", "other"];
 const entryTypes: EntryType[] = ["Core", "Junk", "Alcohol", "Eating Out"];
 const contactEmail = "arun.devanathan@gmail.com";
+const installPromptDismissedKey = "easy-calorie-tracker-install-dismissed";
 
 export default function App() {
   const publicPage = publicPageForPath(window.location.pathname);
@@ -211,6 +218,7 @@ export default function App() {
       </header>
 
       {error ? <div className="error-banner">{error}</div> : null}
+      <InstallPrompt />
 
       <main className="content">
         {!dashboard ? (
@@ -243,6 +251,56 @@ export default function App() {
       ) : null}
       <AppFooter />
     </div>
+  );
+}
+
+function InstallPrompt() {
+  const [installEvent, setInstallEvent] = useState<BeforeInstallPromptEvent | null>(null);
+  const [dismissed, setDismissed] = useState(() => window.localStorage.getItem(installPromptDismissedKey) === "1");
+  const standalone = isStandalone();
+  const showIosHint = isIosSafari() && !standalone;
+  const visible = !dismissed && !standalone && (installEvent || showIosHint);
+
+  useEffect(() => {
+    function handleBeforeInstallPrompt(event: Event) {
+      event.preventDefault();
+      setInstallEvent(event as BeforeInstallPromptEvent);
+    }
+
+    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+    return () => window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+  }, []);
+
+  if (!visible) return null;
+
+  function dismiss() {
+    window.localStorage.setItem(installPromptDismissedKey, "1");
+    setDismissed(true);
+  }
+
+  async function install() {
+    if (!installEvent) return;
+    await installEvent.prompt();
+    dismiss();
+  }
+
+  return (
+    <section className="install-prompt" aria-label="Install app">
+      <div>
+        <strong>Keep it on your home screen</strong>
+        <p>{installEvent ? "Install the dashboard for faster access during alpha testing." : "On iPhone, open in Safari and use Add to Home Screen."}</p>
+      </div>
+      <div className="install-actions">
+        {installEvent ? (
+          <button className="primary-button install-button" type="button" onClick={install}>
+            <Download size={17} /> Install
+          </button>
+        ) : null}
+        <button className="header-action" type="button" onClick={dismiss} aria-label="Dismiss install prompt" title="Dismiss">
+          <X size={18} />
+        </button>
+      </div>
+    </section>
   );
 }
 
@@ -323,9 +381,9 @@ function MetricSummary({
         </div>
       </article>
       <div className="macro-row">
-        <CompactMetric label="Protein" value={formatMacro(totals.protein_g)} unit="g" averageLabel={average.label} averageValue={`${formatMacro(average.protein_g)}g`} />
-        <CompactMetric label="Carbs" value={formatMacro(totals.carbs_g)} unit="g" averageLabel={average.label} averageValue={`${formatMacro(average.carbs_g)}g`} />
-        <CompactMetric label="Fat" value={formatMacro(totals.fat_g)} unit="g" averageLabel={average.label} averageValue={`${formatMacro(average.fat_g)}g`} />
+        <CompactMetric label="Protein" value={formatGrams(totals.protein_g)} unit="g" averageLabel={average.label} averageValue={`${formatGrams(average.protein_g)}g`} />
+        <CompactMetric label="Carbs" value={formatGrams(totals.carbs_g)} unit="g" averageLabel={average.label} averageValue={`${formatGrams(average.carbs_g)}g`} />
+        <CompactMetric label="Fat" value={formatGrams(totals.fat_g)} unit="g" averageLabel={average.label} averageValue={`${formatGrams(average.fat_g)}g`} />
       </div>
     </section>
   );
@@ -424,7 +482,7 @@ function ProteinTrendCard({ days, todayDate }: { days: DashboardData["last_14_da
               <div className="compact-track">
                 <span className="compact-fill" style={{ width: hasLog ? `${Math.max(5, (day.protein_g / maxProtein) * 100)}%` : "0%" }} />
               </div>
-              <strong>{hasLog ? `${formatMacro(day.protein_g)}g` : ""}</strong>
+              <strong>{hasLog ? `${formatGrams(day.protein_g)}g` : ""}</strong>
             </div>
           );
         })}
@@ -449,14 +507,12 @@ function WeightTrendCard({ dashboard }: { dashboard: DashboardData }) {
 
   if (entries.length === 1) {
     return (
-      <article className="panel card weight-card weight-latest-card">
-        <div>
-          <h2>Weight Trend</h2>
-          <p className="muted">Latest entry</p>
-        </div>
-        <strong>{formatMacro(entries[0].weight_kg)} kg</strong>
-      </article>
+      <WeightLowDataCard entries={entries} />
     );
+  }
+
+  if (entries.length < 4) {
+    return <WeightLowDataCard entries={entries} />;
   }
 
   const weights = entries.map((entry) => entry.weight_kg);
@@ -499,6 +555,38 @@ function WeightTrendCard({ dashboard }: { dashboard: DashboardData }) {
   );
 }
 
+function WeightLowDataCard({ entries }: { entries: DashboardData["recent_weight_entries"] }) {
+  const first = entries[0];
+  const latest = entries[entries.length - 1];
+  const delta = latest.weight_kg - first.weight_kg;
+
+  return (
+    <article className="panel card weight-card">
+      <div className="panel-header">
+        <div>
+          <h2>Weight Trend</h2>
+          <p>{entries.length === 1 ? "Latest entry" : "Early readings"}</p>
+        </div>
+      </div>
+      <div className="weight-low-data">
+        <div className="weight-latest">
+          <span>Latest</span>
+          <strong>{formatMacro(latest.weight_kg)} kg</strong>
+        </div>
+        <div className="weight-entry-list">
+          {entries.map((entry) => (
+            <div className="weight-entry-row" key={entry.id}>
+              <span>{formatFullDate(entry.date)}</span>
+              <strong>{formatMacro(entry.weight_kg)} kg</strong>
+            </div>
+          ))}
+        </div>
+        {entries.length > 1 ? <p className="weight-change">{weightLowDataText(first, latest, delta)}</p> : null}
+      </div>
+    </article>
+  );
+}
+
 function FoodList({
   entries,
   onEdit,
@@ -525,7 +613,7 @@ function FoodList({
           <div className="food-macros">
             <strong>{entry.calories} kcal</strong>
             <span>
-              P {formatMacro(entry.protein_g)} · C {formatMacro(entry.carbs_g)} · F {formatMacro(entry.fat_g)}
+              P {formatGrams(entry.protein_g)} · C {formatGrams(entry.carbs_g)} · F {formatGrams(entry.fat_g)}
             </span>
           </div>
           <div className="row-actions">
@@ -894,6 +982,10 @@ function formatMacro(value: number): string {
   return Number(value).toFixed(1).replace(/\.0$/, "");
 }
 
+function formatGrams(value: number): string {
+  return Math.round(value).toLocaleString();
+}
+
 function formatTime(value: string | null): string | null {
   return value ? value.slice(0, 5) : null;
 }
@@ -964,6 +1056,12 @@ function weightChangeText(delta: number): string {
   return `${direction} ${formatMacro(Math.abs(delta))} kg across recent entries`;
 }
 
+function weightLowDataText(first: DashboardData["recent_weight_entries"][number], latest: DashboardData["recent_weight_entries"][number], delta: number): string {
+  if (Math.abs(delta) < 0.05) return `Stable from ${formatFullDate(first.date)} to ${formatFullDate(latest.date)}`;
+  const direction = delta < 0 ? "Down" : "Up";
+  return `${direction} ${formatMacro(Math.abs(delta))} kg from ${formatFullDate(first.date)} to ${formatFullDate(latest.date)}`;
+}
+
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : "Something went wrong";
 }
@@ -972,6 +1070,17 @@ function publicPageForPath(pathname: string): "privacy" | "terms" | null {
   if (pathname === "/privacy") return "privacy";
   if (pathname === "/terms") return "terms";
   return null;
+}
+
+function isStandalone(): boolean {
+  return window.matchMedia("(display-mode: standalone)").matches || ("standalone" in window.navigator && Boolean(window.navigator.standalone));
+}
+
+function isIosSafari(): boolean {
+  const userAgent = window.navigator.userAgent;
+  const isIos = /iPad|iPhone|iPod/.test(userAgent) || (window.navigator.platform === "MacIntel" && window.navigator.maxTouchPoints > 1);
+  const isSafari = /Safari/.test(userAgent) && !/CriOS|FxiOS|EdgiOS/.test(userAgent);
+  return isIos && isSafari;
 }
 
 function sessionFromHash(): { access_token: string; refresh_token: string } | null {

@@ -66,6 +66,7 @@ Success means learning whether users naturally replace existing calorie tracking
    - Weight trend
    - Recent entries
    - Edit and delete flows
+   - Installable PWA dashboard for alpha users
 
 6. Testing
    - Meal logging
