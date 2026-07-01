@@ -1,6 +1,6 @@
 {
   "name": "Easy Calorie Tracker",
-  "short_name": "Calories",
+  "short_name": "Easy Calorie Tracker",
   "description": "ChatGPT-native calorie tracking with a personal nutrition dashboard.",
   "start_url": "/",
   "scope": "/",
